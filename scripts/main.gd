@@ -44,11 +44,73 @@ var sound_enabled := true
 var vibration_enabled := true
 var config: ConfigFile
 var home_ui: CanvasLayer
+var _sfx_players: Dictionary = {}
+
+func _setup_audio() -> void:
+	# Original synthesized effects: no external audio files or copyright dependencies.
+	for effect in ["ui", "place", "clear", "error"]:
+		var player := AudioStreamPlayer.new()
+		player.name = "SFX_" + effect
+		player.volume_db = -7.0 if effect == "ui" else (-3.5 if effect == "clear" else -5.0)
+		player.stream = _make_sfx_stream(effect)
+		add_child(player)
+		_sfx_players[effect] = player
+
+func _make_sfx_stream(effect: String) -> AudioStreamWAV:
+	var sample_rate := 22050
+	var duration := 0.055
+	var start_hz := 760.0
+	var end_hz := 520.0
+	match effect:
+		"place":
+			duration = 0.125
+			start_hz = 390.0
+			end_hz = 245.0
+		"clear":
+			duration = 0.245
+			start_hz = 520.0
+			end_hz = 940.0
+		"error":
+			duration = 0.095
+			start_hz = 210.0
+			end_hz = 135.0
+		"ui":
+			duration = 0.060
+			start_hz = 780.0
+			end_hz = 560.0
+	var sample_count: int = maxi(1, int(round(sample_rate * duration)))
+	var pcm := PackedByteArray()
+	pcm.resize(sample_count * 2)
+	var phase := 0.0
+	for i in range(sample_count):
+		var t := float(i) / float(sample_count)
+		var frequency := lerpf(start_hz, end_hz, t)
+		phase += frequency / float(sample_rate)
+		var fundamental := sin(TAU * phase)
+		var harmonic := sin(TAU * phase * 2.0) * (0.16 if effect == "place" or effect == "clear" else 0.07)
+		var envelope := pow(1.0 - t, 2.0)
+		var attack := minf(1.0, t * 35.0)
+		var sample := clampf((fundamental + harmonic) * envelope * attack * 0.68, -1.0, 1.0)
+		pcm.encode_s16(i * 2, int(round(sample * 32767.0)))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = sample_rate
+	stream.stereo = false
+	stream.data = pcm
+	return stream
+
+func _play_sfx(effect: String) -> void:
+	if not sound_enabled or not _sfx_players.has(effect):
+		return
+	var player: AudioStreamPlayer = _sfx_players[effect]
+	player.stop()
+	player.play()
 
 func _ready() -> void:
 	Input.set_use_accumulated_input(false)
 	font = ThemeDB.fallback_font
 	_load_settings()
+	_setup_audio()
 	_setup_home_ui()
 	_layout()
 	queue_redraw()
@@ -73,11 +135,13 @@ func _setup_home_ui() -> void:
 	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
 
 func _on_home_play() -> void:
+	_play_sfx("ui")
 	_reset_game()
 	if is_instance_valid(home_ui):
 		home_ui.call("set_ui_visible", false)
 
 func _on_home_settings() -> void:
+	_play_sfx("ui")
 	screen = Screen.SETTINGS
 	if is_instance_valid(home_ui):
 		home_ui.call("set_ui_visible", false)
@@ -334,18 +398,23 @@ func _pointer_down(pos: Vector2) -> void:
 			return
 		Screen.SETTINGS:
 			if pos.y >= h*0.32 and pos.y <= h*0.40 and pos.x >= w*0.60:
+				_play_sfx("ui")
 				vibration_enabled = not vibration_enabled
 			elif pos.y >= h*0.41 and pos.y <= h*0.49 and pos.x >= w*0.60:
+				_play_sfx("ui")
 				sound_enabled = not sound_enabled
 			elif pos.y >= h*0.73:
+				_play_sfx("ui")
 				screen=Screen.HOME
 			_save_settings()
 			queue_redraw()
 			return
 		Screen.PAUSED:
 			if pos.y >= h*0.52 and pos.y <= h*0.59:
+				_play_sfx("ui")
 				screen=Screen.PLAYING
 			elif pos.y >= h*0.59 and pos.y <= h*0.67:
+				_play_sfx("ui")
 				screen=Screen.HOME
 				selected=-1
 			queue_redraw()
@@ -353,12 +422,15 @@ func _pointer_down(pos: Vector2) -> void:
 		Screen.PLAYING:
 			if game_over:
 				if pos.y >= h*0.52 and pos.y <= h*0.59:
+					_play_sfx("ui")
 					_reset_game()
 				elif pos.y >= h*0.59 and pos.y <= h*0.67:
+					_play_sfx("ui")
 					screen=Screen.HOME
 				queue_redraw()
 				return
 			if pos.x >= w-78 and pos.y < 70:
+				_play_sfx("ui")
 				screen=Screen.PAUSED
 				queue_redraw()
 				return
@@ -367,6 +439,7 @@ func _pointer_down(pos: Vector2) -> void:
 				var center_x := w*(float(i)+0.5)/3.0
 				if pos.distance_to(Vector2(center_x,center_y)) < 82 and not pieces[i].is_empty():
 					selected=i
+					_play_sfx("ui")
 					drag_cell_offset = _piece_cell_under_finger(i, pos)
 					dragging=true
 					queue_redraw()
@@ -458,10 +531,12 @@ func _try_place(at: Vector2i) -> void:
 		row[target_x] = color_index
 		board[target_y] = row
 	score += shape.size() * 5
+	_play_sfx("place")
 	pieces[selected]=[]
 	selected=-1
 	var cleared := _clear_lines()
 	if cleared > 0:
+		_play_sfx("clear")
 		combo_streak += 1
 		score += 75 * combo_streak
 	else:
