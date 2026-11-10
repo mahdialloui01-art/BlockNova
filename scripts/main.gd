@@ -70,8 +70,8 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 		"ui": duration = 0.075
 		"pickup": duration = 0.11
 		"place": duration = 0.115
-		"clear": duration = 0.62
-		"combo": duration = 0.72
+		"clear": duration = 0.82
+		"combo": duration = 0.92
 		"error": duration = 0.17
 		"gameover": duration = 0.62
 	var sample_count: int = maxi(1, int(round(sample_rate * duration)))
@@ -99,23 +99,18 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				var tap := (sin(TAU * 4700.0 * t) * 0.55 + sin(TAU * 6900.0 * t) * 0.25) * exp(-125.0 * t)
 				sample = (body + tap * 0.12) * attack * 0.82
 			"clear", "combo":
-				# Three-note ascending reward arpeggio; each consecutive combo rises by 2 semitones.
-				var note_duration := 0.115
+				# Warm synthesized grand-piano arpeggio: C/E/G-style triad, with each
+				# consecutive combo transposed upward by two semitones.
+				var note_duration := 0.19
 				var note_slot := mini(int(t / note_duration), 2)
 				var note_offsets := [0.0, 4.0, 7.0]
 				var note_frequency: float = minf(combo_root * pow(2.0, note_offsets[note_slot] / 12.0), 1190.0)
 				var local_t := fmod(t, note_duration)
 				if t < note_duration * 3.0:
-					var note_env := exp(-10.0 * local_t) * minf(1.0, local_t * 95.0)
-					var fundamental := sin(TAU * note_frequency * local_t) * 0.48
-					fundamental += sin(TAU * note_frequency * 2.0 * local_t) * 0.17
-					# Bright chime partials occupy the requested 2.5–6 kHz band.
-					var chime_frequency := clampf(note_frequency * 5.0, 2500.0, 5900.0)
-					var chime := sin(TAU * chime_frequency * local_t) * 0.15
-					chime += sin(TAU * minf(chime_frequency * 1.31, 6000.0) * local_t) * 0.08
-					sample = (fundamental + chime) * note_env
-					if effect == "combo":
-						sample *= 1.12
+					sample = _piano_voice(note_frequency, local_t, 0.78 if effect == "clear" else 0.88)
+					# A restrained upper register shimmer, not a harsh electronic beep.
+					var shimmer_frequency := clampf(note_frequency * 5.02, 2500.0, 5900.0)
+					sample += sin(TAU * shimmer_frequency * local_t) * exp(-15.0 * local_t) * 0.035
 			"error":
 				# Muted downward drop: 300 Hz to 100 Hz during the first 100 ms.
 				var drop_t := minf(t / 0.1, 1.0)
@@ -124,14 +119,17 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				error_phase += drop_frequency / float(sample_rate)
 				sample = (sin(TAU * error_phase) * 0.78 + sin(TAU * error_phase * 0.5) * 0.12) * error_env
 			"ui":
-				var env := exp(-18.0 * normalized_t)
-				sample = (sin(TAU * lerpf(880.0, 690.0, normalized_t) * t) * 0.42 + sin(TAU * 1320.0 * t) * 0.12) * env
+				# Soft high-register piano key for menu and button feedback.
+				sample = _piano_voice(783.99, t, 0.46)
 			"pickup":
-				var env := exp(-10.0 * normalized_t)
-				sample = (sin(TAU * lerpf(420.0, 820.0, normalized_t) * t) * 0.42 + sin(TAU * lerpf(840.0, 1640.0, normalized_t) * t) * 0.18) * env
+				# Bright but gentle piano pickup note.
+				sample = _piano_voice(659.25, t, 0.58)
 			"gameover":
-				var env := exp(-4.0 * normalized_t)
-				sample = (sin(TAU * lerpf(620.0, 105.0, normalized_t) * t) * 0.52 + sin(TAU * lerpf(930.0, 158.0, normalized_t) * t) * 0.22) * env
+				# Three descending piano notes instead of a synthetic pitch sweep.
+				var gameover_slot := mini(int(t / 0.19), 2)
+				var gameover_freqs := [523.25, 392.00, 261.63]
+				var gameover_local := fmod(t, 0.19)
+				sample = _piano_voice(gameover_freqs[gameover_slot], gameover_local, 0.66)
 			_:
 				var env := exp(-8.0 * normalized_t)
 				sample = sin(TAU * 520.0 * t) * env * 0.3
@@ -170,6 +168,20 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 	stream.stereo = false
 	stream.data = pcm
 	return stream
+
+
+# Physically-inspired piano voice built from inharmonic partials and a fast hammer attack.
+# Every partial decays at its own rate, giving a plucked-string/piano character.
+func _piano_voice(frequency: float, local_t: float, velocity: float = 0.7) -> float:
+	var attack := 1.0 - exp(-local_t * 1050.0)
+	var fundamental := sin(TAU * frequency * local_t) * exp(-4.8 * local_t) * 0.58
+	var second := sin(TAU * frequency * 2.003 * local_t) * exp(-7.2 * local_t) * 0.22
+	var third := sin(TAU * frequency * 3.009 * local_t) * exp(-10.5 * local_t) * 0.105
+	var fourth := sin(TAU * frequency * 4.025 * local_t) * exp(-14.0 * local_t) * 0.052
+	var fifth := sin(TAU * frequency * 5.06 * local_t) * exp(-19.0 * local_t) * 0.022
+	var hammer := sin(TAU * 6100.0 * local_t) * exp(-190.0 * local_t) * 0.018
+	var body := fundamental + second + third + fourth + fifth + hammer
+	return body * attack * velocity * exp(-1.7 * local_t)
 
 func _play_sfx(effect: String, note_index: int = 0, combo_index: int = 0) -> void:
 	if not sound_enabled or not _sfx_players.has(effect):
