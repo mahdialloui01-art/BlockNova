@@ -7,11 +7,11 @@ var best_score: int = 0
 var _best_label: Label
 var _root_control: Control
 
-const INK := Color("#263B4D")
-const MUTED := Color("#6D7D86")
-const CREAM := Color("#FFF9EC")
-const ORANGE := Color("#F28A32")
-const TEAL := Color("#258C83")
+const INK := Color("#63351F")
+const MUTED := Color("#A15E38")
+const CREAM := Color("#FFF3D9")
+const ORANGE := Color("#FF7A24")
+const TEAL := Color("#E85D45")
 
 func _ready() -> void:
 	layer = 20
@@ -29,7 +29,7 @@ func _build() -> void:
 	brand.text = "A LITTLE SPACE TO THINK"
 	brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	brand.add_theme_font_size_override("font_size", 15)
-	brand.add_theme_color_override("font_color", Color("#A65B32"))
+	brand.add_theme_color_override("font_color", Color("#B84D2B"))
 	brand.anchor_left = 0.08
 	brand.anchor_right = 0.92
 	brand.anchor_top = 0.205
@@ -70,7 +70,7 @@ func _build() -> void:
 	play.pressed.connect(func(): play_requested.emit())
 	root.add_child(play)
 
-	var settings := _make_button("SETTINGS", TEAL, Color("#176B67"))
+	var settings := _make_button("SETTINGS", TEAL, Color("#C94A35"))
 	settings.anchor_left = 0.13
 	settings.anchor_right = 0.87
 	settings.anchor_top = 0.805
@@ -83,7 +83,7 @@ func _build() -> void:
 	best_panel.anchor_right = 0.75
 	best_panel.anchor_top = 0.895
 	best_panel.anchor_bottom = 0.945
-	best_panel.add_theme_stylebox_override("panel", _panel_style(Color(1.0, 0.97, 0.88, 0.88), Color("#E3C9A5"), 18, 1))
+	best_panel.add_theme_stylebox_override("panel", _panel_style(Color(1.0, 0.97, 0.88, 0.88), Color("#F4B66C"), 18, 1))
 	root.add_child(best_panel)
 
 	_best_label = Label.new()
