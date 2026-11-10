@@ -322,7 +322,7 @@ func _can_place(shape: Array,at: Vector2i) -> bool:
 	return true
 
 func _try_place(at: Vector2i) -> void:
-	if selected<0 or pieces[selected].is_empty():
+	if selected < 0 or selected >= pieces.size() or selected >= piece_colors.size() or pieces[selected].is_empty():
 		return
 	var shape: Array=pieces[selected]
 	if not _can_place(shape,at):
@@ -351,8 +351,8 @@ func _try_place(at: Vector2i) -> void:
 	if score>best:
 		best=score
 		_save_settings()
-	if vibration_enabled:
-		Input.vibrate_handheld(25)
+	# Temporarily disable Android haptics while isolating the placement crash.
+	# Keep board placement independent from device vibrator APIs.
 	if _all_pieces_used():
 		_new_pieces()
 	elif not _any_move():
@@ -360,6 +360,11 @@ func _try_place(at: Vector2i) -> void:
 	queue_redraw()
 
 func _clear_lines() -> void:
+	if board.size() != GRID:
+		return
+	for y in range(GRID):
+		if not (board[y] is Array) or board[y].size() != GRID:
+			return
 	var rows: Array[int]=[]
 	var cols: Array[int]=[]
 	for y in range(GRID):
@@ -391,6 +396,11 @@ func _clear_lines() -> void:
 			score+=cleared*75
 
 func _any_move() -> bool:
+	if board.size() != GRID:
+		return false
+	for y in range(GRID):
+		if not (board[y] is Array) or board[y].size() != GRID:
+			return false
 	for shape in pieces:
 		if shape.is_empty():
 			continue
