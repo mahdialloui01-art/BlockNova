@@ -153,7 +153,7 @@ func _make_rounded_block_mesh() -> Mesh:
                 tool.set_normal(n00); tool.add_vertex(p00)
                 tool.set_normal(n11); tool.add_vertex(p11)
                 tool.set_normal(n01); tool.add_vertex(p01)
-    tool.generate_tangents()
+    # Vertex normals are supplied above; no tangent basis is needed without a normal map.
     return tool.commit()
 
 func _find_mesh_instance(node: Node) -> MeshInstance3D:
