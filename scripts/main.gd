@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 10
+const GRID := 8
 const COLORS := [
 	Color("#48D7F2"), Color("#FFB84D"), Color("#A78BFA"),
 	Color("#62E6A5"), Color("#FF6F91"), Color("#F5E96B")
@@ -65,10 +65,10 @@ func _save_settings() -> void:
 func _layout() -> void:
 	var w := size.x
 	var h := size.y
-	board_size = minf(w - 36.0, h * 0.49)
+	board_size = minf(w * 0.78, h * 0.38)
 	cell = board_size / GRID
-	board_origin = Vector2((w - board_size) * 0.5, h * 0.255)
-	tray_y = h * 0.78
+	board_origin = Vector2((w - board_size) * 0.5, h * 0.285)
+	tray_y = h * 0.77
 
 func _reset_game() -> void:
 	board.clear()
