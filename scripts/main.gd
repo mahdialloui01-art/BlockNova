@@ -73,7 +73,7 @@ func _setup_home_ui() -> void:
 func _on_home_play() -> void:
 	_reset_game()
 	if is_instance_valid(home_ui):
-		home_ui.visible = false
+		home_ui.call("set_ui_visible", false)
 
 func _on_home_settings() -> void:
 	screen = Screen.SETTINGS
@@ -123,7 +123,7 @@ func _new_pieces() -> void:
 func _draw() -> void:
 	_layout()
 	if is_instance_valid(home_ui):
-		home_ui.visible = screen == Screen.HOME
+		home_ui.call("set_ui_visible", screen == Screen.HOME)
 	var w := size.x
 	var h := size.y
 	_draw_background()
