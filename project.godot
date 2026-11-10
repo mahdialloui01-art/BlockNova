@@ -6,14 +6,15 @@ config/name="BlockNova"
 run/main_scene="res://scenes/main.tscn"
 
 [display]
-window/size/viewport_width=480
-window/size/viewport_height=960
-window/size/window_width_override=480
-window/size/window_height_override=960
+window/size/viewport_width=1080
+window/size/viewport_height=2160
+window/size/window_width_override=1080
+window/size/window_height_override=2160
 window/stretch/mode="canvas_items"
 window/handheld/orientation=1
 
 [rendering]
+anti_aliasing/quality/msaa_2d=2
 textures/vram_compression/import_etc2_astc=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
