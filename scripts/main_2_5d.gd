@@ -17,7 +17,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
     super._ready()
     _setup_3d_view()
-    _block_mesh = _load_kaykit_box_mesh()
+    _block_mesh = _make_rounded_block_mesh()
     _sync_pending = true
     set_process(true)
 
@@ -88,21 +88,74 @@ func _setup_3d_view() -> void:
     _models_root.name = "PuzzleMeshes"
     _world_root.add_child(_models_root)
 
-func _load_kaykit_box_mesh() -> Mesh:
-    const MODEL_PATH := "res://assets/kaykit/gltf/box_small.gltf"
-    var packed_scene := ResourceLoader.load(MODEL_PATH) as PackedScene
-    if packed_scene == null:
-        push_error("Could not load KayKit 3D box model.")
-        return null
-    var generated := packed_scene.instantiate()
-    var found := _find_mesh_instance(generated)
-    if found == null or found.mesh == null:
-        generated.free()
-        push_error("KayKit box model has no mesh.")
-        return null
-    var result: Mesh = found.mesh
-    generated.free()
-    return result
+func _make_rounded_block_mesh() -> Mesh:
+    # Solid Block-Blast-style tile: filled rounded cube, not a hollow crate.
+    # Subdivided faces are projected onto a rounded-box profile to create real bevels.
+    var tool := SurfaceTool.new()
+    tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    tool.set_smooth(true)
+    var half := 0.5
+    var radius := 0.105
+    var inner := half - radius
+    var segments := 5
+    var face_normals := [
+        Vector3(1, 0, 0), Vector3(-1, 0, 0),
+        Vector3(0, 1, 0), Vector3(0, -1, 0),
+        Vector3(0, 0, 1), Vector3(0, 0, -1)
+    ]
+    var face_u := [
+        Vector3(0, 0, -1), Vector3(0, 0, 1),
+        Vector3(1, 0, 0), Vector3(1, 0, 0),
+        Vector3(1, 0, 0), Vector3(-1, 0, 0)
+    ]
+    var face_v := [
+        Vector3(0, 1, 0), Vector3(0, 1, 0),
+        Vector3(0, 0, 1), Vector3(0, 0, -1),
+        Vector3(0, 1, 0), Vector3(0, 1, 0)
+    ]
+    for face in range(6):
+        var n: Vector3 = face_normals[face]
+        var u: Vector3 = face_u[face]
+        var v: Vector3 = face_v[face]
+        var points: Array = []
+        var normals: Array = []
+        for y in range(segments + 1):
+            var row: Array = []
+            var normal_row: Array = []
+            for x in range(segments + 1):
+                var a := -half + float(x) / float(segments) * (half * 2.0)
+                var b := -half + float(y) / float(segments) * (half * 2.0)
+                var p := n * half + u * a + v * b
+                var core := Vector3(
+                    clampf(p.x, -inner, inner),
+                    clampf(p.y, -inner, inner),
+                    clampf(p.z, -inner, inner)
+                )
+                var bevel_normal := (p - core).normalized()
+                if bevel_normal.length_squared() < 0.001:
+                    bevel_normal = n
+                row.append(core + bevel_normal * radius)
+                normal_row.append(bevel_normal)
+            points.append(row)
+            normals.append(normal_row)
+        for y in range(segments):
+            for x in range(segments):
+                var p00: Vector3 = points[y][x]
+                var p10: Vector3 = points[y][x + 1]
+                var p01: Vector3 = points[y + 1][x]
+                var p11: Vector3 = points[y + 1][x + 1]
+                var n00: Vector3 = normals[y][x]
+                var n10: Vector3 = normals[y][x + 1]
+                var n01: Vector3 = normals[y + 1][x]
+                var n11: Vector3 = normals[y + 1][x + 1]
+                tool.set_normal(n00); tool.add_vertex(p00)
+                tool.set_normal(n10); tool.add_vertex(p10)
+                tool.set_normal(n11); tool.add_vertex(p11)
+                tool.set_normal(n00); tool.add_vertex(p00)
+                tool.set_normal(n11); tool.add_vertex(p11)
+                tool.set_normal(n01); tool.add_vertex(p01)
+    tool.generate_tangents()
+    return tool.commit()
 
 func _find_mesh_instance(node: Node) -> MeshInstance3D:
     if node is MeshInstance3D and node.mesh != null:
@@ -125,15 +178,15 @@ func _material_for(color: Color) -> StandardMaterial3D:
     if _material_cache.has(key):
         return _material_cache[key]
     var material := StandardMaterial3D.new()
-    # Saturated enamel finish: brighter top-facing surfaces, glossy bevel highlights.
-    material.albedo_color = color.lightened(0.16)
-    material.roughness = 0.20
-    material.metallic = 0.08
-    material.metallic_specular = 0.72
+    # Filled, softly rounded puzzle tile with gentle top-face gradient and restrained gloss.
+    material.albedo_color = color.lightened(0.10)
+    material.roughness = 0.30
+    material.metallic = 0.0
+    material.metallic_specular = 0.38
     material.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
     material.clearcoat_enabled = true
-    material.clearcoat = 0.28
-    material.clearcoat_roughness = 0.18
+    material.clearcoat = 0.12
+    material.clearcoat_roughness = 0.30
     _material_cache[key] = material
     return material
 
@@ -162,13 +215,13 @@ func _add_center_glow(parent: Node3D, world_scale: float, color: Color) -> void:
     var glow := MeshInstance3D.new()
     glow.name = "SoftCenterHighlight"
     var plane := PlaneMesh.new()
-    plane.size = Vector2(0.76, 0.76)
+    plane.size = Vector2(0.58, 0.58)
     glow.mesh = plane
     glow.material_override = _center_glow_material(color)
     glow.scale = Vector3(world_scale, 1.0, world_scale)
     # PlaneMesh lies in X/Y; rotate onto the cube's upward-facing X/Z surface.
     glow.rotation_degrees.x = -90.0
-    glow.position = Vector3(0, world_scale * 0.49, 0)
+    glow.position = Vector3(0, world_scale * 0.505, 0)
     glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(glow)
 
