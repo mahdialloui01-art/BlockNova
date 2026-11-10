@@ -1,11 +1,10 @@
 extends Control
 
 const GRID := 8
-# High-saturation warm palette: vivid coral, tangerine, golden yellow,
-# hot pink, scarlet and bright apricot. Keep each hue distinct on the dark board.
+# Contemporary luminous palette: cyan, ultraviolet, magenta, amber, mint and coral.
 const COLORS := [
-	Color("#FF4B3E"), Color("#FF8500"), Color("#FFD21C"),
-	Color("#FF2F78"), Color("#F04438"), Color("#FFB02E")
+	Color("#27DDF2"), Color("#8B6CFF"), Color("#FF62B5"),
+	Color("#FFC857"), Color("#35D6A5"), Color("#FF7968")
 ]
 const SHAPES := [
 	[Vector2i(0,0)],
@@ -45,6 +44,7 @@ var vibration_enabled := true
 var config: ConfigFile
 var home_ui: CanvasLayer
 var _sfx_players: Dictionary = {}
+var _music_player: AudioStreamPlayer
 var placement_note_index := 0
 
 func _setup_audio() -> void:
@@ -62,6 +62,68 @@ func _setup_audio() -> void:
 		player.stream = _make_sfx_stream(effect)
 		add_child(player)
 		_sfx_players[effect] = player
+	_music_player = AudioStreamPlayer.new()
+	_music_player.name = "ModernAmbientMusic"
+	_music_player.volume_db = -27.0
+	_music_player.stream = _make_music_stream()
+	add_child(_music_player)
+	_update_music_state()
+
+func _make_music_stream() -> AudioStreamWAV:
+	# Original 8-second electronic lounge loop: warm synth pads, soft bass pulses,
+	# and a restrained four-note pluck pattern. No external copyrighted music.
+	const sample_rate := 48000
+	const duration := 8.0
+	var sample_count := int(sample_rate * duration)
+	var progression := [
+		[146.83, 174.61, 220.00, 261.63],
+		[116.54, 146.83, 174.61, 220.00],
+		[174.61, 220.00, 261.63, 329.63],
+		[130.81, 164.81, 196.00, 246.94]
+	]
+	var samples := PackedFloat32Array()
+	samples.resize(sample_count)
+	for i in range(sample_count):
+		var t := float(i) / float(sample_rate)
+		var bar := mini(int(t / 2.0), 3)
+		var local_bar := fmod(t, 2.0)
+		var chord: Array = progression[bar]
+		var pad := 0.0
+		for note in chord:
+			var frequency := float(note)
+			pad += sin(TAU * frequency * t) * 0.022
+			pad += sin(TAU * frequency * 2.0 * t) * 0.0045
+		var pad_envelope := minf(1.0, local_bar * 2.0) * minf(1.0, (2.0 - local_bar) * 4.0)
+		var beat_t := fmod(local_bar, 0.5)
+		var beat_index := mini(int(local_bar / 0.5), 3)
+		var bass := sin(TAU * 55.0 * beat_t) * exp(-10.0 * beat_t) * 0.075
+		var pluck := 0.0
+		if beat_t < 0.30:
+			var pluck_frequency := float(chord[beat_index]) * 2.0
+			pluck = (sin(TAU * pluck_frequency * beat_t) * 0.72 + sin(TAU * pluck_frequency * 2.01 * beat_t) * 0.18) * exp(-13.0 * beat_t) * 0.095
+		samples[i] = clampf(pad * pad_envelope + bass + pluck, -0.8, 0.8)
+	var pcm := PackedByteArray()
+	pcm.resize(sample_count * 2)
+	for i in range(sample_count):
+		pcm.encode_s16(i * 2, int(round(samples[i] * 32767.0)))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = sample_rate
+	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = sample_count
+	stream.data = pcm
+	return stream
+
+func _update_music_state() -> void:
+	if not is_instance_valid(_music_player):
+		return
+	if sound_enabled:
+		if not _music_player.playing:
+			_music_player.play()
+	else:
+		_music_player.stop()
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
@@ -97,20 +159,22 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				body += sin(TAU * minf(placement_pitch * 1.25, 2990.0) * t) * exp(-58.0 * t) * 0.24
 				body += sin(TAU * minf(placement_pitch * 1.43, 2990.0) * t) * exp(-78.0 * t) * 0.10
 				var tap := (sin(TAU * 4700.0 * t) * 0.55 + sin(TAU * 6900.0 * t) * 0.25) * exp(-125.0 * t)
-				sample = (body + tap * 0.12) * attack * 0.82
+				var placement_tone := _modern_pluck(740.0 + float(posmod(note_index, 7)) * 42.0, t, 0.22, 19.0)
+				sample = (body + tap * 0.12) * attack * 0.72 + placement_tone
 			"clear", "combo":
 				# Warm synthesized grand-piano arpeggio: C/E/G-style triad, with each
 				# consecutive combo transposed upward by two semitones.
-				var note_duration := 0.19
-				var note_slot := mini(int(t / note_duration), 2)
-				var note_offsets := [0.0, 4.0, 7.0]
+				var note_duration := 0.15
+				var note_slot := mini(int(t / note_duration), 3)
+				var note_offsets := [0.0, 3.0, 7.0, 10.0]
 				var note_frequency: float = minf(combo_root * pow(2.0, note_offsets[note_slot] / 12.0), 1190.0)
 				var local_t := fmod(t, note_duration)
-				if t < note_duration * 3.0:
-					sample = _piano_voice(note_frequency, local_t, 0.78 if effect == "clear" else 0.88)
-					# A restrained upper register shimmer, not a harsh electronic beep.
+				if t < note_duration * 4.0:
+					# Keep the warm piano body, then add a modern glassy synth-pluck layer.
+					sample = _piano_voice(note_frequency, local_t, 0.62 if effect == "clear" else 0.70)
+					sample += _modern_pluck(note_frequency * 1.5, local_t, 0.38, 5.8)
 					var shimmer_frequency := clampf(note_frequency * 5.02, 2500.0, 5900.0)
-					sample += sin(TAU * shimmer_frequency * local_t) * exp(-15.0 * local_t) * 0.035
+					sample += sin(TAU * shimmer_frequency * local_t) * exp(-15.0 * local_t) * 0.045
 			"error":
 				# Muted downward drop: 300 Hz to 100 Hz during the first 100 ms.
 				var drop_t := minf(t / 0.1, 1.0)
@@ -119,17 +183,17 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				error_phase += drop_frequency / float(sample_rate)
 				sample = (sin(TAU * error_phase) * 0.78 + sin(TAU * error_phase * 0.5) * 0.12) * error_env
 			"ui":
-				# Soft high-register piano key for menu and button feedback.
-				sample = _piano_voice(783.99, t, 0.46)
+				# Short, polished digital-glass chime for modern interface feedback.
+				sample = _modern_pluck(880.0, t, 0.42, 12.0) + _piano_voice(1318.51, t, 0.12)
 			"pickup":
-				# Bright but gentle piano pickup note.
-				sample = _piano_voice(659.25, t, 0.58)
+				# A brighter rising synth key with a soft piano undertone.
+				sample = _modern_pluck(987.77, t, 0.52, 9.0) + _piano_voice(659.25, t, 0.16)
 			"gameover":
 				# Three descending piano notes instead of a synthetic pitch sweep.
 				var gameover_slot := mini(int(t / 0.19), 2)
 				var gameover_freqs := [523.25, 392.00, 261.63]
 				var gameover_local := fmod(t, 0.19)
-				sample = _piano_voice(gameover_freqs[gameover_slot], gameover_local, 0.66)
+				sample = _piano_voice(gameover_freqs[gameover_slot], gameover_local, 0.48) + _modern_pluck(gameover_freqs[gameover_slot] * 1.5, gameover_local, 0.22, 6.0)
 			_:
 				var env := exp(-8.0 * normalized_t)
 				sample = sin(TAU * 520.0 * t) * env * 0.3
@@ -197,6 +261,17 @@ func _piano_voice(frequency: float, local_t: float, velocity: float = 0.7) -> fl
 	body += sin(TAU * 347.0 * t) * exp(-8.5 * t) * 0.016
 	var tone := fundamental + partial_2 + partial_3 + partial_4 + partial_5 + partial_6 + hammer + body
 	return tone * attack * release * velocity
+
+func _modern_pluck(frequency: float, local_t: float, velocity: float = 0.5, decay: float = 12.0) -> float:
+	var t := maxf(local_t, 0.0)
+	var bend := 0.42 * exp(-34.0 * t)
+	var phase := TAU * frequency * t + bend * sin(TAU * frequency * 2.0 * t)
+	var fundamental := sin(phase) * 0.72
+	var octave := sin(TAU * frequency * 2.01 * t) * 0.19
+	var shimmer := sin(TAU * frequency * 4.03 * t) * 0.07
+	var transient := sin(TAU * 5800.0 * t) * exp(-95.0 * t) * 0.045
+	var envelope := (1.0 - exp(-t * 1800.0)) * exp(-decay * t)
+	return (fundamental + octave + shimmer + transient) * envelope * velocity
 
 func _play_sfx(effect: String, note_index: int = 0, combo_index: int = 0) -> void:
 	if not sound_enabled or not _sfx_players.has(effect):
@@ -335,43 +410,44 @@ func _draw_logo_board(center: Vector2) -> void:
 func _draw_settings() -> void:
 	var w := size.x
 	var h := size.y
-	_draw_text("SETTINGS",Vector2(0,h*0.20),31,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,270),Color("#FFF0D8"),24)
-	_draw_text("HAPTIC FEEDBACK",Vector2(w*0.14,h*0.355),14,Color("#63351F"))
-	_draw_button(Rect2(w*0.66,h*0.33,w*0.20,42),"ON" if vibration_enabled else "OFF",Color("#F28A32") if vibration_enabled else Color("#F6C46B"))
-	_draw_text("SOUND",Vector2(w*0.14,h*0.445),14,Color("#63351F"))
-	_draw_button(Rect2(w*0.66,h*0.42,w*0.20,42),"ON" if sound_enabled else "OFF",Color("#F28A32") if sound_enabled else Color("#F6C46B"))
-	_draw_text("Your preferences are saved on this device",Vector2(0,h*0.505),11,Color("#A66A45"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("PERSONAL BEST     "+str(best),Vector2(0,h*0.625),15,Color("#A94B20"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_button(Rect2(w*0.14,h*0.76,w*0.72,58),"BACK",Color("#E96A4B"))
+	_draw_text("SETTINGS",Vector2(0,h*0.20),31,Color("#F3F6FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("MAKE THE EXPERIENCE YOURS",Vector2(0,h*0.235),11,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,310),Color("#141F39"),24)
+	_draw_text("HAPTIC FEEDBACK",Vector2(w*0.14,h*0.355),14,Color("#C7D2EA"))
+	_draw_button(Rect2(w*0.66,h*0.33,w*0.20,42),"ON" if vibration_enabled else "OFF",Color("#27BBD4") if vibration_enabled else Color("#34415D"))
+	_draw_text("SOUND & MUSIC",Vector2(w*0.14,h*0.445),14,Color("#C7D2EA"))
+	_draw_button(Rect2(w*0.66,h*0.42,w*0.20,42),"ON" if sound_enabled else "OFF",Color("#8B6CFF") if sound_enabled else Color("#34415D"))
+	_draw_text("Modern synth tones and ambient music",Vector2(0,h*0.505),11,Color("#8294B8"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("PERSONAL BEST     "+str(best),Vector2(0,h*0.625),15,Color("#F5D77B"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_button(Rect2(w*0.14,h*0.76,w*0.72,58),"BACK",Color("#8B6CFF"))
 
 func _draw_game() -> void:
 	var w := size.x
 	var h := size.y
-	_draw_text("BLOCK NOVA",Vector2(0,h*0.075),27,Color("#63351F"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#9A5A35"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_panel(Rect2(22,h*0.135,w-44,72),Color("#FFF0D8"),18)
-	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#9A5A35"))
-	_draw_text(str(score),Vector2(42,h*0.205),25,Color.WHITE)
-	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#A94B20"))
+	_draw_text("BLOCK NOVA",Vector2(0,h*0.075),27,Color("#F3F6FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_panel(Rect2(22,h*0.135,w-44,72),Color("#141F39"),18)
+	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#91A4C8"))
+	_draw_text(str(score),Vector2(42,h*0.205),25,Color("#F3F6FF"))
+	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#F5D77B"))
 	if combo_streak > 0:
-		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#D94F45"))
-	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#FF9A3D"))
-	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#9A5A35"))
-	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#9A5A35"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("Drag a shape onto the board  •  Clear rows & columns",Vector2(0,h*0.94),10,Color("#7183A8"),HORIZONTAL_ALIGNMENT_CENTER,w)
+		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#32E6D1"))
+	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#805BFF"))
+	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#34DDF0"))
+	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#A8B6D4"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("DRAG A SHAPE  •  CLEAR ROWS & COLUMNS",Vector2(0,h*0.94),10,Color("#7F91B6"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	if game_over:
 		_draw_modal("NO MORE MOVES","Final score: "+str(score),"PLAY AGAIN","HOME")
 
 func _draw_modal(heading: String, subtitle: String, primary: String, secondary: String) -> void:
 	var w := size.x
 	var h := size.y
-	draw_rect(Rect2(Vector2.ZERO,size),Color(0.96,0.55,0.24,0.18))
-	_draw_panel(Rect2(28,h*0.36,w-56,250),Color("#FFF0D8"),22)
-	_draw_text(heading,Vector2(0,h*0.43),24,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text(subtitle,Vector2(0,h*0.48),13,Color("#9A5A35"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_button(Rect2(w*0.20,h*0.53,w*0.60,48),primary,Color("#E96A4B"))
-	_draw_button(Rect2(w*0.20,h*0.59,w*0.60,42),secondary,Color("#35435F"))
+	draw_rect(Rect2(Vector2.ZERO,size),Color(0.015,0.025,0.06,0.78))
+	_draw_panel(Rect2(28,h*0.36,w-56,250),Color("#17223D"),22)
+	_draw_text(heading,Vector2(0,h*0.43),24,Color("#F3F6FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text(subtitle,Vector2(0,h*0.48),13,Color("#A9B7D4"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_button(Rect2(w*0.20,h*0.53,w*0.60,48),primary,Color("#27CFE8"))
+	_draw_button(Rect2(w*0.20,h*0.59,w*0.60,42),secondary,Color("#805BFF"))
 
 func _dominant_board_color() -> Color:
 	var counts: Array[int] = []
@@ -398,62 +474,45 @@ func _dominant_board_color() -> Color:
 
 func _draw_background() -> void:
 	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
-	var dominant := _dominant_board_color()
-	# Full-bleed warm color theme: the dominant tile hue drives the whole play screen.
-	var play_top := dominant.lerp(Color("#FFF0D2"), 0.18)
-	var play_bottom := dominant.lerp(Color("#FFE1B5"), 0.08)
-	var top_color := Color("#FFF1D7") if menu_screen else play_top
-	var bottom_color := Color("#FFB86B") if menu_screen else play_bottom
-	# Layered vertical gradient: clean at phone scale and sharp on high-density displays.
-	var bands := 72
+	var top_color := Color("#080D1C") if not menu_screen else Color("#0B1024")
+	var bottom_color := Color("#111A32") if not menu_screen else Color("#171A38")
+	var bands := 88
 	for i in range(bands):
 		var t := float(i) / float(bands - 1)
-		var band_color := top_color.lerp(bottom_color, t)
-		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), band_color)
-	if menu_screen:
-		# Warm sun halo and soft cloud silhouettes.
-		draw_circle(Vector2(size.x * 0.82, size.y * 0.135), size.x * 0.19, Color(1.0, 0.72, 0.30, 0.10))
-		draw_circle(Vector2(size.x * 0.82, size.y * 0.135), size.x * 0.135, Color(1.0, 0.84, 0.45, 0.18))
-		draw_circle(Vector2(size.x * 0.82, size.y * 0.135), size.x * 0.082, Color("#FFF4C9"))
-		for cloud in [Vector2(size.x * 0.13, size.y * 0.17), Vector2(size.x * 0.49, size.y * 0.105), Vector2(size.x * 0.93, size.y * 0.30)]:
-			draw_circle(cloud, size.x * 0.037, Color(1.0, 1.0, 0.96, 0.70))
-			draw_circle(cloud + Vector2(size.x * 0.035, -size.y * 0.012), size.x * 0.047, Color(1.0, 1.0, 0.96, 0.78))
-			draw_circle(cloud + Vector2(size.x * 0.075, 0), size.x * 0.034, Color(1.0, 1.0, 0.96, 0.70))
-		var far_hill := PackedVector2Array([Vector2(0,size.y*0.68),Vector2(size.x*0.18,size.y*0.57),Vector2(size.x*0.43,size.y*0.66),Vector2(size.x*0.73,size.y*0.54),Vector2(size.x,size.y*0.65),Vector2(size.x,size.y),Vector2(0,size.y)])
-		draw_colored_polygon(far_hill, Color("#E9A16A"))
-		var near_hill := PackedVector2Array([Vector2(0,size.y*0.80),Vector2(size.x*0.25,size.y*0.70),Vector2(size.x*0.56,size.y*0.79),Vector2(size.x*0.82,size.y*0.68),Vector2(size.x,size.y*0.77),Vector2(size.x,size.y),Vector2(0,size.y)])
-		draw_colored_polygon(near_hill, Color("#F28C56"))
-		var front_hill := PackedVector2Array([Vector2(0,size.y*0.90),Vector2(size.x*0.30,size.y*0.82),Vector2(size.x*0.66,size.y*0.91),Vector2(size.x,size.y*0.83),Vector2(size.x,size.y),Vector2(0,size.y)])
-		draw_colored_polygon(front_hill, Color("#D96B43"))
-		for i in range(22):
-			var fx := fmod(float(i) * 67.0 + 19.0, size.x)
-			var fy := size.y * (0.76 + fmod(float(i) * 0.027, 0.20))
-			draw_circle(Vector2(fx, fy), 2.2, Color(1.0, 0.94, 0.65, 0.78))
-	else:
-		# Restrained ambient light pools keep the play board readable.
-		draw_circle(Vector2(size.x * 0.08, size.y * 0.31), size.x * 0.58, Color(dominant.r, dominant.g, dominant.b, 0.18))
-		draw_circle(Vector2(size.x * 0.94, size.y * 0.78), size.x * 0.52, Color(dominant.r, dominant.g, dominant.b, 0.14))
+		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), top_color.lerp(bottom_color, t))
+	# Deep ambient neon pools and subtle star points give the UI depth without clutter.
+	draw_circle(Vector2(size.x * 0.08, size.y * 0.22), size.x * 0.54, Color(0.08, 0.62, 0.82, 0.10))
+	draw_circle(Vector2(size.x * 0.92, size.y * 0.72), size.x * 0.58, Color(0.48, 0.24, 0.95, 0.12))
+	draw_circle(Vector2(size.x * 0.52, size.y * 0.48), size.x * 0.34, Color(0.12, 0.28, 0.58, 0.07))
+	for i in range(34):
+		var px := fmod(float(i) * 83.0 + 23.0, size.x)
+		var py := fmod(float(i) * 137.0 + 61.0, size.y)
+		var alpha := 0.18 if i % 3 == 0 else 0.08
+		draw_circle(Vector2(px, py), 1.2 if i % 4 == 0 else 0.8, Color(0.66, 0.82, 1.0, alpha))
+	# A fine horizontal light sweep frames the top HUD.
+	if not menu_screen:
+		draw_line(Vector2(size.x * 0.08, size.y * 0.12), Vector2(size.x * 0.92, size.y * 0.12), Color(0.25, 0.82, 1.0, 0.18), 1.0, true)
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var shadow := StyleBoxFlat.new()
-	shadow.bg_color = Color(0.45, 0.22, 0.10, 0.14)
+	shadow.bg_color = Color("#070B18")
 	shadow.set_corner_radius_all(int(radius))
-	shadow.shadow_color = Color(0.45, 0.22, 0.10, 0.18)
-	shadow.shadow_size = 9
-	shadow.shadow_offset = Vector2(0, 6)
+	shadow.shadow_color = Color(0.0, 0.0, 0.0, 0.42)
+	shadow.shadow_size = 12
+	shadow.shadow_offset = Vector2(0, 7)
 	draw_style_box(shadow, rect)
 	var panel := StyleBoxFlat.new()
 	panel.bg_color = color
 	panel.set_corner_radius_all(int(radius))
 	panel.set_border_width_all(1)
-	panel.border_color = color.lightened(0.22)
+	panel.border_color = Color("#344568")
 	draw_style_box(panel, rect)
-	draw_line(rect.position + Vector2(radius, 1.5), Vector2(rect.end.x - radius, rect.position.y + 1.5), Color(1, 1, 1, 0.18), 1.5, true)
+	draw_line(rect.position + Vector2(radius, 1.5), Vector2(rect.end.x - radius, rect.position.y + 1.5), Color(0.62, 0.86, 1.0, 0.12), 1.5, true)
 
 func _draw_button(rect: Rect2,label: String,color: Color) -> void:
 	_draw_panel(rect, color, 18)
 	var sheen := StyleBoxFlat.new()
-	sheen.bg_color = Color(1, 1, 1, 0.10)
+	sheen.bg_color = Color(1, 1, 1, 0.12)
 	sheen.set_corner_radius_all(14)
 	draw_style_box(sheen, Rect2(rect.position + Vector2(5, 4), Vector2(rect.size.x - 10, rect.size.y * 0.32)))
 	_draw_text(label,Vector2(0,rect.position.y+rect.size.y*0.62),15,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,size.x)
@@ -510,6 +569,7 @@ func _pointer_down(pos: Vector2) -> void:
 				_play_sfx("ui")
 				screen=Screen.HOME
 			_save_settings()
+			_update_music_state()
 			queue_redraw()
 			return
 		Screen.PAUSED:
