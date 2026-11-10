@@ -444,17 +444,10 @@ func _try_place(at: Vector2i) -> void:
 		if not (board[y] is Array) or board[y].size() != GRID:
 			return
 	var color_index := 0
-	var closest_color_distance := INF
 	for i in range(COLORS.size()):
-		var candidate_distance := piece_colors[selected].to_rgba32() ^ COLORS[i].to_rgba32()
-		# Exact palette lookup with a safe fallback for serialized/rounded Color values.
 		if piece_colors[selected].is_equal_approx(COLORS[i]):
 			color_index = i
-			closest_color_distance = 0.0
 			break
-		if closest_color_distance > 0.0 and candidate_distance == 0:
-			color_index = i
-			closest_color_distance = 0.0
 	for c in shape:
 		var target_y: int = at.y + c.y
 		var target_x: int = at.x + c.x
