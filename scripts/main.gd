@@ -161,7 +161,7 @@ func _draw_game() -> void:
 				_draw_block(rect,COLORS[board[y][x]])
 	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#8EA2CA"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	for i in range(3):
-		if pieces[i].is_empty():
+		if pieces[i].is_empty() or (dragging and selected == i):
 			continue
 		var center := Vector2(w*(float(i)+0.5)/3.0,tray_y+55)
 		if selected == i:
