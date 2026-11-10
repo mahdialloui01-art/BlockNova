@@ -169,29 +169,29 @@ func _draw_settings() -> void:
 	var w := size.x
 	var h := size.y
 	_draw_text("SETTINGS",Vector2(0,h*0.20),31,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,270),Color("#182943"),24)
-	_draw_text("HAPTIC FEEDBACK",Vector2(w*0.14,h*0.355),14,Color("#EAF0FF"))
-	_draw_button(Rect2(w*0.66,h*0.33,w*0.20,42),"ON" if vibration_enabled else "OFF",Color("#287E78") if vibration_enabled else Color("#39445C"))
-	_draw_text("SOUND",Vector2(w*0.14,h*0.445),14,Color("#EAF0FF"))
-	_draw_button(Rect2(w*0.66,h*0.42,w*0.20,42),"ON" if sound_enabled else "OFF",Color("#287E78") if sound_enabled else Color("#39445C"))
-	_draw_text("Your preferences are saved on this device",Vector2(0,h*0.505),11,Color("#91A4BC"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("PERSONAL BEST     "+str(best),Vector2(0,h*0.625),15,Color("#FFD477"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_button(Rect2(w*0.14,h*0.76,w*0.72,58),"BACK",Color("#6658E8"))
+	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,270),Color("#FFF0D8"),24)
+	_draw_text("HAPTIC FEEDBACK",Vector2(w*0.14,h*0.355),14,Color("#63351F"))
+	_draw_button(Rect2(w*0.66,h*0.33,w*0.20,42),"ON" if vibration_enabled else "OFF",Color("#F28A32") if vibration_enabled else Color("#F6C46B"))
+	_draw_text("SOUND",Vector2(w*0.14,h*0.445),14,Color("#63351F"))
+	_draw_button(Rect2(w*0.66,h*0.42,w*0.20,42),"ON" if sound_enabled else "OFF",Color("#F28A32") if sound_enabled else Color("#F6C46B"))
+	_draw_text("Your preferences are saved on this device",Vector2(0,h*0.505),11,Color("#A66A45"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("PERSONAL BEST     "+str(best),Vector2(0,h*0.625),15,Color("#A94B20"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_button(Rect2(w*0.14,h*0.76,w*0.72,58),"BACK",Color("#E96A4B"))
 
 func _draw_game() -> void:
 	var w := size.x
 	var h := size.y
-	_draw_text("BLOCK NOVA",Vector2(0,h*0.075),27,Color("#F5F8FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#7E91B8"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_panel(Rect2(22,h*0.135,w-44,72),Color("#151F38"),18)
-	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#8EA2CA"))
+	_draw_text("BLOCK NOVA",Vector2(0,h*0.075),27,Color("#63351F"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#9A5A35"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_panel(Rect2(22,h*0.135,w-44,72),Color("#FFF0D8"),18)
+	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#9A5A35"))
 	_draw_text(str(score),Vector2(42,h*0.205),25,Color.WHITE)
-	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#FFD477"))
+	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#A94B20"))
 	if combo_streak > 0:
-		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#48D7F2"))
-	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#26385B"))
-	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#8EA2CA"))
-	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#8EA2CA"),HORIZONTAL_ALIGNMENT_CENTER,w)
+		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#D94F45"))
+	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#FF9A3D"))
+	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#9A5A35"))
+	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#9A5A35"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_text("Drag a shape onto the board  •  Clear rows & columns",Vector2(0,h*0.94),10,Color("#7183A8"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	if game_over:
 		_draw_modal("NO MORE MOVES","Final score: "+str(score),"PLAY AGAIN","HOME")
@@ -199,11 +199,11 @@ func _draw_game() -> void:
 func _draw_modal(heading: String, subtitle: String, primary: String, secondary: String) -> void:
 	var w := size.x
 	var h := size.y
-	draw_rect(Rect2(Vector2.ZERO,size),Color(0.02,0.04,0.09,0.72))
-	_draw_panel(Rect2(28,h*0.36,w-56,250),Color("#202D4B"),22)
+	draw_rect(Rect2(Vector2.ZERO,size),Color(0.96,0.55,0.24,0.18))
+	_draw_panel(Rect2(28,h*0.36,w-56,250),Color("#FFF0D8"),22)
 	_draw_text(heading,Vector2(0,h*0.43),24,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text(subtitle,Vector2(0,h*0.48),13,Color("#B8C8E8"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_button(Rect2(w*0.20,h*0.53,w*0.60,48),primary,Color("#6658E8"))
+	_draw_text(subtitle,Vector2(0,h*0.48),13,Color("#9A5A35"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_button(Rect2(w*0.20,h*0.53,w*0.60,48),primary,Color("#E96A4B"))
 	_draw_button(Rect2(w*0.20,h*0.59,w*0.60,42),secondary,Color("#35435F"))
 
 func _dominant_board_color() -> Color:
@@ -232,10 +232,12 @@ func _dominant_board_color() -> Color:
 func _draw_background() -> void:
 	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
 	var dominant := _dominant_board_color()
-	var play_top := Color("#101B35").lerp(dominant.darkened(0.78), 0.48)
-	var play_bottom := Color("#172747").lerp(dominant.darkened(0.72), 0.38)
-	var top_color := Color("#FFF0D2") if menu_screen else play_top
-	var bottom_color := Color("#E9A45F") if menu_screen else play_bottom
+	# Full-bleed warm color theme: the dominant tile hue drives the whole play screen.
+	var warm_base := dominant.lightened(0.20)
+	var play_top := Color("#FFF0D2").lerp(warm_base.lightened(0.38), 0.72)
+	var play_bottom := Color("#FFE1B5").lerp(warm_base, 0.88)
+	var top_color := Color("#FFF1D7") if menu_screen else play_top
+	var bottom_color := Color("#FFB86B") if menu_screen else play_bottom
 	# Layered vertical gradient: clean at phone scale and sharp on high-density displays.
 	var bands := 72
 	for i in range(bands):
@@ -263,14 +265,14 @@ func _draw_background() -> void:
 			draw_circle(Vector2(fx, fy), 2.2, Color(1.0, 0.94, 0.65, 0.78))
 	else:
 		# Restrained ambient light pools keep the play board readable.
-		draw_circle(Vector2(size.x * 0.08, size.y * 0.31), size.x * 0.48, Color(dominant.r, dominant.g, dominant.b, 0.105))
-		draw_circle(Vector2(size.x * 0.94, size.y * 0.78), size.x * 0.42, Color(dominant.r, dominant.g, dominant.b, 0.075))
+		draw_circle(Vector2(size.x * 0.08, size.y * 0.31), size.x * 0.58, Color(dominant.r, dominant.g, dominant.b, 0.18))
+		draw_circle(Vector2(size.x * 0.94, size.y * 0.78), size.x * 0.52, Color(dominant.r, dominant.g, dominant.b, 0.14))
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var shadow := StyleBoxFlat.new()
-	shadow.bg_color = Color(0.035, 0.07, 0.13, 0.30)
+	shadow.bg_color = Color(0.45, 0.22, 0.10, 0.14)
 	shadow.set_corner_radius_all(int(radius))
-	shadow.shadow_color = Color(0.04, 0.07, 0.12, 0.34)
+	shadow.shadow_color = Color(0.45, 0.22, 0.10, 0.18)
 	shadow.shadow_size = 9
 	shadow.shadow_offset = Vector2(0, 6)
 	draw_style_box(shadow, rect)
