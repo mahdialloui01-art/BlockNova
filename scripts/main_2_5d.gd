@@ -40,8 +40,6 @@ func _setup_3d_view() -> void:
     _viewport_container = SubViewportContainer.new()
     _viewport_container.name = "KayKit3DOverlay"
     _viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    _viewport_container.position = Vector2.ZERO
-    _viewport_container.size = get_viewport_rect().size
     _viewport_container.stretch = true
     _viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _viewport_container.z_index = 0
@@ -158,7 +156,7 @@ func _append_box_surface(tool: SurfaceTool, box: BoxMesh, center: Vector3, dimen
     tool.append_from(box, 0, Transform3D(basis, center))
 
 func _build_single_board_mesh() -> MeshInstance3D:
-    # One merged 3D board object: a solid backing plate plus 64 inset cell platforms.
+    # One merged 3D board object: a solid backing plate plus GRID x GRID inset cell platforms.
     # The cell geometry is merged into the same ArrayMesh; no duplicated side rails.
     var top_left := _screen_to_board_plane(board_origin)
     var top_right := _screen_to_board_plane(board_origin + Vector2(board_size, 0))
@@ -221,7 +219,6 @@ func _sync_3d_models() -> void:
     if not visible_3d or _kaykit_mesh == null:
         return
 
-    _viewport.size = Vector2i(maxi(1, int(size.x)), maxi(1, int(size.y)))
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
     if visible_home:
         var logo_center := Vector2(size.x * 0.5, size.y * 0.56)
