@@ -13,6 +13,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download and unpack original KayKit Dungeon Pack
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/kaykit-pack assets/kaykit
+          curl --fail --location --retry 3 \
+            "https://github.com/mahdialloui01-art/BlockNova/releases/download/game-assets-v1/KayKit_Dungeon_Pack_1.1_FREE.zip" \
+            --output /tmp/kaykit-dungeon-pack.zip
+          echo "6acb859d1aefae074f937d1e6f13656a7312b2bdb6d9f1232ebdade8d93d6a1c  /tmp/kaykit-dungeon-pack.zip" | sha256sum --check
+          unzip -q /tmp/kaykit-dungeon-pack.zip -d /tmp/kaykit-pack
+          MODEL="$(find /tmp/kaykit-pack -type f -path '*/Assets/gltf/box_small.gltf' -print -quit)"
+          if [ -z "$MODEL" ]; then
+            echo "Original KayKit box_small.gltf was not found in the release archive."
+            find /tmp/kaykit-pack -type f -iname '*.gltf' | head -40
+            exit 1
+          fi
+          ASSETS_DIR="${MODEL%/gltf/box_small.gltf}"
+          cp -a "$ASSETS_DIR/." assets/kaykit/
+          test -s assets/kaykit/gltf/box_small.gltf
+          test -s assets/kaykit/gltf/box_small.bin
+          echo "Original KayKit GLTF and companion files installed:"
+          ls -lh assets/kaykit/gltf/box_small.gltf assets/kaykit/gltf/box_small.bin
+
       - name: Install Java 17
         uses: actions/setup-java@v4
         with:
