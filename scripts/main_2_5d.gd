@@ -19,13 +19,6 @@ func _ready() -> void:
     super._ready()
     _setup_3d_view()
     _kaykit_mesh = _load_kaykit_box_mesh()
-    # Never leave the puzzle empty if Android cannot instantiate the imported GLTF.
-    # Prefer the original KayKit mesh; use a genuine 3D mesh fallback only on import failure.
-    if _kaykit_mesh == null:
-        push_warning("KayKit GLTF unavailable at runtime; enabling 3D cube fallback.")
-        var fallback_mesh := BoxMesh.new()
-        fallback_mesh.size = Vector3.ONE
-        _kaykit_mesh = fallback_mesh
     _sync_pending = true
     set_process(true)
 
@@ -100,10 +93,10 @@ func _setup_3d_view() -> void:
 
 func _load_kaykit_box_mesh() -> Mesh:
     const MODEL_PATH := "res://assets/kaykit/gltf/box_small.gltf"
-    if not FileAccess.file_exists(MODEL_PATH):
-        push_error("Required original KayKit model is missing: " + MODEL_PATH)
-        return null
-    var packed_scene := load(MODEL_PATH) as PackedScene
+    # Runtime exports use Godot's imported-resource remap; the original .gltf
+    # source may not exist as a directly readable FileAccess path inside the APK.
+    # Resolve the model through ResourceLoader so the imported KayKit scene is used.
+    var packed_scene := ResourceLoader.load(MODEL_PATH) as PackedScene
     if packed_scene == null:
         push_error("Godot could not import the original KayKit GLTF scene.")
         return null
