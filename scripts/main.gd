@@ -78,7 +78,7 @@ func _on_home_play() -> void:
 func _on_home_settings() -> void:
 	screen = Screen.SETTINGS
 	if is_instance_valid(home_ui):
-		home_ui.visible = false
+		home_ui.call("set_ui_visible", false)
 	queue_redraw()
 
 func _save_settings() -> void:
@@ -435,6 +435,8 @@ func _try_place(at: Vector2i) -> void:
 	if score>best:
 		best=score
 		_save_settings()
+		if is_instance_valid(home_ui):
+			home_ui.call("set_best_score", best)
 	# Temporarily disable Android haptics while isolating the placement crash.
 	# Keep board placement independent from device vibrator APIs.
 	if _all_pieces_used():
