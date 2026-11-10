@@ -510,6 +510,7 @@ func _try_place(at: Vector2i) -> void:
 		return
 	var shape: Array=pieces[selected]
 	if not _can_place(shape,at):
+		_play_sfx("error")
 		return
 	# Validate the board before writing to avoid invalid Android grid access.
 	if board.size() != GRID:
