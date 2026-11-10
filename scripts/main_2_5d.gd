@@ -184,7 +184,7 @@ func _sync_3d_models() -> void:
 
     var block_world := cell * world_per_pixel * 0.91
     var tile_mesh := BoxMesh.new()
-    tile_mesh.size = Vector3(block_world * 0.94, 0.11, block_world * 0.94)
+    tile_mesh.size = Vector3(block_world * 0.94, 0.18, block_world * 0.94)
     var tile_material := StandardMaterial3D.new()
     tile_material.albedo_color = Color("#253653")
     tile_material.roughness = 0.88
@@ -195,7 +195,7 @@ func _sync_3d_models() -> void:
             var tile := MeshInstance3D.new()
             tile.mesh = tile_mesh
             tile.material_override = tile_material
-            tile.position = _screen_to_board_plane(center) + Vector3(0, -0.055, 0)
+            tile.position = _screen_to_board_plane(center) + Vector3(0, -0.09, 0)
             _models_root.add_child(tile)
             var color_index := int(board[y][x])
             if color_index >= 0 and color_index < COLORS.size():
@@ -212,6 +212,30 @@ func _sync_3d_models() -> void:
     plate.material_override = plate_material
     plate.position = _screen_to_board_plane(board_center) + Vector3(0, -0.13, 0)
     _models_root.add_child(plate)
+
+    # Raised 3D rim around the board: the playfield is a physical-looking tray,
+    # not a flat 2D grid painted over the background.
+    var rim_material := StandardMaterial3D.new()
+    rim_material.albedo_color = Color("#34496D")
+    rim_material.roughness = 0.62
+    var rim_height := 0.22
+    var rim_width := maxf(0.10, block_world * 0.10)
+    var half_board := board_size * world_per_pixel * 0.5
+    var rim_y := -0.015
+    var rim_specs := [
+        [Vector3(board_size * world_per_pixel + rim_width * 2.0, rim_height, rim_width), Vector3(0, rim_y, -half_board - rim_width * 0.5)],
+        [Vector3(board_size * world_per_pixel + rim_width * 2.0, rim_height, rim_width), Vector3(0, rim_y, half_board + rim_width * 0.5)],
+        [Vector3(rim_width, rim_height, board_size * world_per_pixel), Vector3(-half_board - rim_width * 0.5, rim_y, 0)],
+        [Vector3(rim_width, rim_height, board_size * world_per_pixel), Vector3(half_board + rim_width * 0.5, rim_y, 0)]
+    ]
+    for spec in rim_specs:
+        var rim := MeshInstance3D.new()
+        var rim_mesh := BoxMesh.new()
+        rim_mesh.size = spec[0]
+        rim.mesh = rim_mesh
+        rim.material_override = rim_material
+        rim.position = _screen_to_board_plane(board_center) + spec[1]
+        _models_root.add_child(rim)
 
     var w := size.x
     for i in range(3):
