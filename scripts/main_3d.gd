@@ -290,7 +290,7 @@ func _rebuild_3d() -> void:
  if dragging and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
   var at := _world_to_cell(pointer_world)
   var valid := _can_place(pieces[selected],at)
-  var ghost_color := piece_colors[selected] if valid else Color("#FF536B")
+  var ghost_color: Color = piece_colors[selected] if valid else Color("#FF536B")
   for c in pieces[selected]:
    _cube(world_blocks, Vector3((float(at.x+c.x)-3.5)*CELL,0.50,BOARD_Z+(float(at.y+c.y)-3.5)*CELL), ghost_color, Vector3(0.88,0.94,0.88), "DragPreview")
 
@@ -315,8 +315,8 @@ func _world_to_cell(p: Vector3) -> Vector2i:
 
 func _can_place(shape: Array, at: Vector2i) -> bool:
  for c in shape:
-  var x := at.x+c.x
-  var y := at.y+c.y
+  var x: int = at.x+c.x
+  var y: int = at.y+c.y
   if x < 0 or y < 0 or x >= GRID or y >= GRID:
    return false
   if int(board[y][x]) != -1:
