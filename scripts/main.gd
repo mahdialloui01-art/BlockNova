@@ -45,6 +45,8 @@ var config: ConfigFile
 var home_ui: CanvasLayer
 var _sfx_players: Dictionary = {}
 var _music_player: AudioStreamPlayer
+var _theme_color := Color("#27DDF2")
+var _theme_target := Color("#27DDF2")
 var placement_note_index := 0
 
 func _setup_audio() -> void:
@@ -291,6 +293,15 @@ func _ready() -> void:
 	_layout()
 	queue_redraw()
 
+func _process(delta: float) -> void:
+	# Follow the most common block/tray color with a soft, cinematic transition.
+	_theme_target = _dominant_board_color()
+	var blend := 1.0 - exp(-delta * 2.6)
+	var next_color := _theme_color.lerp(_theme_target, blend)
+	if _theme_color.distance_to(next_color) > 0.0015:
+		_theme_color = next_color
+		queue_redraw()
+
 func _load_settings() -> void:
 	config = ConfigFile.new()
 	config.load("user://blocknova.cfg")
@@ -474,24 +485,32 @@ func _dominant_board_color() -> Color:
 
 func _draw_background() -> void:
 	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
-	var top_color := Color("#080D1C") if not menu_screen else Color("#0B1024")
-	var bottom_color := Color("#111A32") if not menu_screen else Color("#171A38")
+	var tint := _theme_color
+	# Keep the interface dark and legible while letting the dominant block hue
+	# subtly recolor the entire atmosphere.
+	var top_base := Color("#080D1C") if not menu_screen else Color("#0B1024")
+	var bottom_base := Color("#111A32") if not menu_screen else Color("#171A38")
+	var top_color := top_base.lerp(tint.darkened(0.66), 0.24)
+	var bottom_color := bottom_base.lerp(tint.darkened(0.54), 0.34)
 	var bands := 88
 	for i in range(bands):
 		var t := float(i) / float(bands - 1)
 		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), top_color.lerp(bottom_color, t))
-	# Deep ambient neon pools and subtle star points give the UI depth without clutter.
-	draw_circle(Vector2(size.x * 0.08, size.y * 0.22), size.x * 0.54, Color(0.08, 0.62, 0.82, 0.10))
-	draw_circle(Vector2(size.x * 0.92, size.y * 0.72), size.x * 0.58, Color(0.48, 0.24, 0.95, 0.12))
-	draw_circle(Vector2(size.x * 0.52, size.y * 0.48), size.x * 0.34, Color(0.12, 0.28, 0.58, 0.07))
+	# Large, blurred-feeling color pools track the dominant block hue.
+	var glow := Color(tint.r, tint.g, tint.b, 0.105)
+	var secondary_glow := Color(tint.r, tint.g, tint.b, 0.055)
+	draw_circle(Vector2(size.x * 0.08, size.y * 0.22), size.x * 0.54, glow)
+	draw_circle(Vector2(size.x * 0.92, size.y * 0.72), size.x * 0.58, Color(tint.lightened(0.18).r, tint.lightened(0.18).g, tint.lightened(0.18).b, 0.075))
+	draw_circle(Vector2(size.x * 0.52, size.y * 0.48), size.x * 0.34, secondary_glow)
+	# Fine particles pick up a hint of the active hue, without reducing contrast.
 	for i in range(34):
 		var px := fmod(float(i) * 83.0 + 23.0, size.x)
 		var py := fmod(float(i) * 137.0 + 61.0, size.y)
 		var alpha := 0.18 if i % 3 == 0 else 0.08
-		draw_circle(Vector2(px, py), 1.2 if i % 4 == 0 else 0.8, Color(0.66, 0.82, 1.0, alpha))
-	# A fine horizontal light sweep frames the top HUD.
+		draw_circle(Vector2(px, py), 1.2 if i % 4 == 0 else 0.8, Color(tint.r, tint.g, tint.b, alpha))
+	# A subtle luminous line echoes the dominant block color.
 	if not menu_screen:
-		draw_line(Vector2(size.x * 0.08, size.y * 0.12), Vector2(size.x * 0.92, size.y * 0.12), Color(0.25, 0.82, 1.0, 0.18), 1.0, true)
+		draw_line(Vector2(size.x * 0.08, size.y * 0.12), Vector2(size.x * 0.92, size.y * 0.12), Color(tint.r, tint.g, tint.b, 0.22), 1.2, true)
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var shadow := StyleBoxFlat.new()
