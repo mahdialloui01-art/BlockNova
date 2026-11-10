@@ -100,6 +100,22 @@ func _draw() -> void:
 	var w := size.x
 	var h := size.y
 	draw_rect(Rect2(Vector2.ZERO, size), Color("#F5B36C"))
+	# Sunlit sky, soft clouds and rolling green hills add life to the menu.
+	if screen == Screen.HOME or screen == Screen.SETTINGS:
+		draw_circle(Vector2(size.x * 0.82, size.y * 0.13), size.x * 0.10, Color("#FFF0B0"))
+		draw_circle(Vector2(size.x * 0.82, size.y * 0.13), size.x * 0.145, Color(1.0, 0.92, 0.62, 0.22))
+		for cloud in [Vector2(size.x * 0.14, size.y * 0.17), Vector2(size.x * 0.53, size.y * 0.11), Vector2(size.x * 0.92, size.y * 0.32)]:
+			draw_circle(cloud, size.x * 0.045, Color(1.0, 0.98, 0.90, 0.72))
+			draw_circle(cloud + Vector2(size.x * 0.04, -size.y * 0.012), size.x * 0.052, Color(1.0, 0.98, 0.90, 0.72))
+			draw_circle(cloud + Vector2(size.x * 0.08, 0), size.x * 0.04, Color(1.0, 0.98, 0.90, 0.72))
+		var far_hill := PackedVector2Array([Vector2(0,size.y*0.67),Vector2(size.x*0.22,size.y*0.54),Vector2(size.x*0.48,size.y*0.66),Vector2(size.x*0.75,size.y*0.53),Vector2(size.x,size.y*0.65),Vector2(size.x,size.y),Vector2(0,size.y)])
+		draw_colored_polygon(far_hill, Color("#E89A58"))
+		var near_hill := PackedVector2Array([Vector2(0,size.y*0.79),Vector2(size.x*0.27,size.y*0.69),Vector2(size.x*0.58,size.y*0.78),Vector2(size.x*0.82,size.y*0.68),Vector2(size.x,size.y*0.77),Vector2(size.x,size.y),Vector2(0,size.y)])
+		draw_colored_polygon(near_hill, Color("#66B978"))
+		for i in range(14):
+			var fx := fmod(float(i) * 83.0 + 17.0, size.x)
+			var fy := size.y * (0.76 + fmod(float(i) * 0.031, 0.19))
+			draw_circle(Vector2(fx, fy), 2.5, Color("#FFF3B5"))
 	draw_circle(Vector2(w * 0.12, h * 0.16), w * 0.42, Color(0.12,0.28,0.48,0.10))
 	draw_circle(Vector2(w * 0.92, h * 0.72), w * 0.38, Color(0.38,0.18,0.48,0.08))
 	match screen:
