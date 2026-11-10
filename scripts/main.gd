@@ -63,119 +63,104 @@ func _setup_audio() -> void:
 		add_child(player)
 		_sfx_players[effect] = player
 
-func _make_sfx_stream(effect: String, note_index: int = 0) -> AudioStreamWAV:
-	var sample_rate := 48000
+func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
+	const sample_rate := 48000
 	var duration := 0.12
 	match effect:
 		"ui": duration = 0.075
 		"pickup": duration = 0.11
-		"place": duration = 0.34
-		"clear": duration = 0.34
-		"combo": duration = 0.48
+		"place": duration = 0.115
+		"clear": duration = 0.62
+		"combo": duration = 0.72
 		"error": duration = 0.17
 		"gameover": duration = 0.62
 	var sample_count: int = maxi(1, int(round(sample_rate * duration)))
+	var samples := PackedFloat32Array()
+	samples.resize(sample_count)
+	var placement_offsets := [-75.0, 55.0, -60.0, 85.0, -45.0, 100.0, -90.0, 65.0, -55.0, 90.0, -80.0, 45.0]
+	var placement_pitch: float = 2050.0 + placement_offsets[posmod(note_index, placement_offsets.size())]
+	var combo_shift: float = pow(2.0, float(mini(combo_index, 18) * 2) / 12.0)
+	var combo_root: float = minf(520.0 * combo_shift, 1080.0)
+	var lowpass_state := 0.0
+	var highpass_previous_input := 0.0
+	var highpass_previous_output := 0.0
+	for i in range(sample_count):
+		var t := float(i) / float(sample_rate)
+		var normalized_t := float(i) / float(sample_count)
+		var sample := 0.0
+		match effect:
+			"place":
+				# Short, tactile wooden/plastic click. Main resonances stay in 1.5–3 kHz.
+				var attack := minf(1.0, t * 700.0)
+				var body := sin(TAU * placement_pitch * t) * exp(-42.0 * t) * 0.58
+				body += sin(TAU * minf(placement_pitch * 1.25, 2990.0) * t) * exp(-58.0 * t) * 0.24
+				body += sin(TAU * minf(placement_pitch * 1.43, 2990.0) * t) * exp(-78.0 * t) * 0.10
+				var tap := (sin(TAU * 4700.0 * t) * 0.55 + sin(TAU * 6900.0 * t) * 0.25) * exp(-125.0 * t)
+			sample = (body + tap * 0.12) * attack * 0.82
+			"clear", "combo":
+				# Three-note ascending reward arpeggio; each consecutive combo rises by 2 semitones.
+				var note_duration := 0.115
+				var note_slot := mini(int(t / note_duration), 2)
+				var note_offsets := [0.0, 4.0, 7.0]
+				var note_frequency: float = minf(combo_root * pow(2.0, note_offsets[note_slot] / 12.0), 1190.0)
+				var local_t := fmod(t, note_duration)
+				var note_env := exp(-10.0 * local_t) * minf(1.0, local_t * 95.0)
+				var fundamental := sin(TAU * note_frequency * local_t) * 0.48
+				fundamental += sin(TAU * note_frequency * 2.0 * local_t) * 0.17
+				# Bright chime partials occupy the requested 2.5–6 kHz band.
+				var chime_frequency := clampf(note_frequency * 5.0, 2500.0, 5900.0)
+				var chime := sin(TAU * chime_frequency * local_t) * 0.15
+				chime += sin(TAU * minf(chime_frequency * 1.31, 6000.0) * local_t) * 0.08
+				sample = (fundamental + chime) * note_env
+				if effect == "combo":
+					sample *= 1.12
+			"error":
+				# Muted downward drop: 300 Hz to 100 Hz during the first 100 ms.
+				var drop_t := minf(t / 0.1, 1.0)
+				var drop_frequency := 300.0 * pow(100.0 / 300.0, drop_t)
+				var error_env := exp(-13.0 * t) * minf(1.0, t * 90.0)
+				sample = (sin(TAU * drop_frequency * t) * 0.78 + sin(TAU * drop_frequency * 0.5 * t) * 0.12) * error_env
+			"ui":
+				var env := exp(-18.0 * normalized_t)
+				sample = (sin(TAU * lerpf(880.0, 690.0, normalized_t) * t) * 0.42 + sin(TAU * 1320.0 * t) * 0.12) * env
+			"pickup":
+				var env := exp(-10.0 * normalized_t)
+				sample = (sin(TAU * lerpf(420.0, 820.0, normalized_t) * t) * 0.42 + sin(TAU * lerpf(840.0, 1640.0, normalized_t) * t) * 0.18) * env
+			"gameover":
+				var env := exp(-4.0 * normalized_t)
+				sample = (sin(TAU * lerpf(620.0, 105.0, normalized_t) * t) * 0.52 + sin(TAU * lerpf(930.0, 158.0, normalized_t) * t) * 0.22) * env
+			_:
+			var env := exp(-8.0 * normalized_t)
+			sample = sin(TAU * 520.0 * t) * env * 0.3
+		# DSP: high-pass placement at 150 Hz; low-pass invalid drops at 800 Hz.
+		if effect == "place":
+			var hp_rc := 1.0 / (TAU * 150.0)
+			var hp_dt := 1.0 / float(sample_rate)
+			var hp_alpha := hp_rc / (hp_rc + hp_dt)
+			var hp_output := hp_alpha * (highpass_previous_output + sample - highpass_previous_input)
+			highpass_previous_input = sample
+			highpass_previous_output = hp_output
+			sample = hp_output
+		elif effect == "error":
+			var lp_alpha := 1.0 - exp(-TAU * 800.0 / float(sample_rate))
+			lowpass_state += lp_alpha * (sample - lowpass_state)
+			sample = lowpass_state
+		samples[i] = clampf(sample, -1.0, 1.0)
+	# A quiet pair of delayed repeats adds a short room-like tail to line clears.
+	if effect == "clear" or effect == "combo":
+		var delay_one := int(0.105 * float(sample_rate))
+		var delay_two := int(0.205 * float(sample_rate))
+		for i in range(sample_count):
+			var echo := 0.0
+			if i >= delay_one:
+				echo += samples[i - delay_one] * 0.20
+			if i >= delay_two:
+				echo += samples[i - delay_two] * 0.10
+			samples[i] = clampf(samples[i] + echo, -1.0, 1.0)
 	var pcm := PackedByteArray()
 	pcm.resize(sample_count * 2)
-	var phase_a := 0.0
-	var phase_b := 0.0
-	var phase_c := 0.0
 	for i in range(sample_count):
-		var t := float(i) / float(sample_count)
-		var f_a := 520.0
-		var f_b := 1040.0
-		var f_c := 1560.0
-		var amp_a := 0.72
-		var amp_b := 0.20
-		var amp_c := 0.08
-		var decay := 5.0
-		var noise_mix := 0.0
-		match effect:
-			"ui":
-				f_a = lerpf(880.0, 690.0, t)
-				f_b = lerpf(1320.0, 1040.0, t)
-				amp_a = 0.42
-				amp_b = 0.18
-				decay = 15.0
-			"pickup":
-				f_a = lerpf(420.0, 820.0, t)
-				f_b = lerpf(840.0, 1640.0, t)
-				amp_a = 0.52
-				amp_b = 0.28
-				decay = 9.0
-			"place":
-				# Each placed shape gets its own note from a bright pop scale.
-				var root_note := 330.0 * pow(2.0, float(posmod(note_index, 12)) / 12.0)
-				f_a = root_note * lerpf(1.42, 0.78, t)
-				f_b = root_note * 2.01 * lerpf(1.18, 0.72, t)
-				f_c = root_note * 3.02 * lerpf(1.10, 0.64, t)
-				amp_a = 0.72
-				amp_b = 0.28
-				amp_c = 0.10
-				decay = 11.5
-				noise_mix = 0.14
-			"clear":
-				f_a = lerpf(480.0, 1180.0, t)
-				f_b = lerpf(720.0, 1760.0, t)
-				f_c = lerpf(1440.0, 2360.0, t)
-				amp_a = 0.42
-				amp_b = 0.30
-				amp_c = 0.18
-				decay = 4.2
-			"combo":
-				f_a = lerpf(390.0, 1480.0, t)
-				f_b = lerpf(780.0, 2220.0, t)
-				f_c = lerpf(1170.0, 2960.0, t)
-				amp_a = 0.42
-				amp_b = 0.34
-				amp_c = 0.23
-				decay = 2.8
-			"error":
-				f_a = lerpf(245.0, 155.0, t)
-				f_b = lerpf(310.0, 205.0, t)
-				amp_a = 0.60
-				amp_b = 0.28
-				decay = 8.0
-				noise_mix = 0.08
-			"gameover":
-				f_a = lerpf(620.0, 105.0, t)
-				f_b = lerpf(930.0, 158.0, t)
-				f_c = lerpf(1240.0, 210.0, t)
-				amp_a = 0.56
-				amp_b = 0.25
-				amp_c = 0.12
-				decay = 3.2
-		phase_a += f_a / float(sample_rate)
-		phase_b += f_b / float(sample_rate)
-		phase_c += f_c / float(sample_rate)
-		var envelope := exp(-decay * t)
-		var attack := minf(1.0, t * 90.0)
-		var tone := sin(TAU * phase_a) * amp_a
-		tone += sin(TAU * phase_b) * amp_b
-		tone += sin(TAU * phase_c) * amp_c
-		# A tiny deterministic transient adds a crisp tactile edge to impacts.
-		var transient := sin(TAU * 7100.0 * t) * exp(-85.0 * t) * noise_mix
-		var sample := clampf((tone * envelope + transient) * attack * 0.72, -1.0, 1.0)
-		if effect == "place":
-			# Premium synthesized piano: stretched inharmonic partials, two subtly
-			# detuned strings, a soft hammer transient, and a natural multi-rate decay.
-			var piano_steps := [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26]
-			var piano_frequency := 261.6256 * pow(2.0, float(piano_steps[posmod(note_index, piano_steps.size())]) / 12.0)
-			var piano_tone := 0.0
-			var partial_amplitudes := [1.0, 0.48, 0.25, 0.16, 0.105, 0.075, 0.052, 0.038, 0.026]
-			var partial_decays := [4.8, 6.2, 8.0, 10.5, 13.0, 15.5, 18.0, 20.0, 22.0]
-			for partial in range(partial_amplitudes.size()):
-				var harmonic := float(partial + 1)
-				var stretch := sqrt(1.0 + 0.00018 * harmonic * harmonic)
-				var partial_frequency := piano_frequency * harmonic * stretch
-				var partial_phase := TAU * partial_frequency * t
-				var string_pair := sin(partial_phase) * 0.88 + sin(partial_phase * 1.0017) * 0.12
-				piano_tone += string_pair * partial_amplitudes[partial] * exp(-partial_decays[partial] * t)
-			var hammer := (sin(TAU * 6200.0 * t) * 0.55 + sin(TAU * 9100.0 * t) * 0.25) * exp(-105.0 * t)
-			var piano_attack := minf(1.0, t * 520.0)
-			var piano_sample := (piano_tone + hammer * 0.075) * piano_attack * 0.78
-			sample = clampf(piano_sample, -1.0, 1.0)
-		pcm.encode_s16(i * 2, int(round(sample * 32767.0)))
+		pcm.encode_s16(i * 2, int(round(samples[i] * 32767.0)))
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = sample_rate
@@ -183,13 +168,13 @@ func _make_sfx_stream(effect: String, note_index: int = 0) -> AudioStreamWAV:
 	stream.data = pcm
 	return stream
 
-func _play_sfx(effect: String, note_index: int = 0) -> void:
+func _play_sfx(effect: String, note_index: int = 0, combo_index: int = 0) -> void:
 	if not sound_enabled or not _sfx_players.has(effect):
 		return
 	var player: AudioStreamPlayer = _sfx_players[effect]
 	player.stop()
-	if effect == "place":
-		player.stream = _make_sfx_stream("place", note_index)
+	if effect == "place" or effect == "clear" or effect == "combo" or effect == "error":
+		player.stream = _make_sfx_stream(effect, note_index, combo_index)
 	player.play()
 
 func _ready() -> void:
@@ -626,7 +611,7 @@ func _try_place(at: Vector2i) -> void:
 	selected=-1
 	var cleared := _clear_lines()
 	if cleared > 0:
-		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear")
+		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
 		combo_streak += 1
 		score += 75 * combo_streak
 	else:
