@@ -34,6 +34,7 @@ var board_origin := Vector2.ZERO
 var board_size := 0.0
 var tray_y := 0.0
 var font: Font
+var use_3d_visuals := false
 var sound_enabled := true
 var vibration_enabled := true
 var config: ConfigFile
@@ -122,6 +123,8 @@ func _draw_home() -> void:
 	_draw_text("BEST SCORE  "+str(best),Vector2(0,h*0.93),13,Color("#FFD477"),HORIZONTAL_ALIGNMENT_CENTER,w)
 
 func _draw_logo_board(center: Vector2) -> void:
+	if use_3d_visuals:
+		return
 	var unit := minf(size.x*0.105,42.0)
 	var pattern := [Vector2i(-1,-1),Vector2i(0,-1),Vector2i(1,-1),Vector2i(-1,0),Vector2i(0,0),Vector2i(1,0),Vector2i(0,1),Vector2i(1,1)]
 	for i in range(pattern.size()):
@@ -151,34 +154,36 @@ func _draw_game() -> void:
 	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#FFD477"))
 	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#26385B"))
 	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#8EA2CA"))
-	for y in range(GRID):
-		for x in range(GRID):
-			var p := board_origin+Vector2(x*cell,y*cell)
-			var rect := Rect2(p+Vector2(2,2),Vector2(cell-4,cell-4))
-			if board[y][x] == -1:
-				_draw_panel(rect,Color("#17233D"),5)
-			else:
-				_draw_block(rect,COLORS[board[y][x]])
+	if not use_3d_visuals:
+		for y in range(GRID):
+			for x in range(GRID):
+				var p := board_origin+Vector2(x*cell,y*cell)
+				var rect := Rect2(p+Vector2(2,2),Vector2(cell-4,cell-4))
+				if board[y][x] == -1:
+					_draw_panel(rect,Color("#17233D"),5)
+				else:
+					_draw_block(rect,COLORS[board[y][x]])
 	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#8EA2CA"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	for i in range(3):
-		if pieces[i].is_empty() or (dragging and selected == i):
-			continue
-		var center := Vector2(w*(float(i)+0.5)/3.0,tray_y+55)
-		if selected == i:
-			_draw_panel(Rect2(center.x-58,center.y-48,116,104),Color("#26385B"),16)
-		var shape: Array = pieces[i]
-		var minp := Vector2i(99,99)
-		var maxp := Vector2i.ZERO
-		for c in shape:
-			minp.x=mini(minp.x,c.x)
-			minp.y=mini(minp.y,c.y)
-			maxp.x=maxi(maxp.x,c.x)
-			maxp.y=maxi(maxp.y,c.y)
-		var unit := minf(20.0,66.0/float(maxi(maxp.x-minp.x+1,maxp.y-minp.y+1)))
-		var origin := center-Vector2((maxp.x-minp.x+1)*unit,(maxp.y-minp.y+1)*unit)*0.5
-		for c in shape:
-			_draw_block(Rect2(origin+Vector2(c-minp)*unit+Vector2(1,1),Vector2(unit-2,unit-2)),piece_colors[i])
-	if dragging and selected >= 0 and not pieces[selected].is_empty():
+	if not use_3d_visuals:
+		for i in range(3):
+			if pieces[i].is_empty() or (dragging and selected == i):
+				continue
+			var center := Vector2(w*(float(i)+0.5)/3.0,tray_y+55)
+			if selected == i:
+				_draw_panel(Rect2(center.x-58,center.y-48,116,104),Color("#26385B"),16)
+			var shape: Array = pieces[i]
+			var minp := Vector2i(99,99)
+			var maxp := Vector2i.ZERO
+			for c in shape:
+				minp.x=mini(minp.x,c.x)
+				minp.y=mini(minp.y,c.y)
+				maxp.x=maxi(maxp.x,c.x)
+				maxp.y=maxi(maxp.y,c.y)
+			var unit := minf(20.0,66.0/float(maxi(maxp.x-minp.x+1,maxp.y-minp.y+1)))
+			var origin := center-Vector2((maxp.x-minp.x+1)*unit,(maxp.y-minp.y+1)*unit)*0.5
+			for c in shape:
+				_draw_block(Rect2(origin+Vector2(c-minp)*unit+Vector2(1,1),Vector2(unit-2,unit-2)),piece_colors[i])
+	if dragging and selected >= 0 and not pieces[selected].is_empty() and not use_3d_visuals:
 		_draw_ghost()
 	_draw_text("Drag a shape onto the board  •  Clear rows & columns",Vector2(0,h*0.94),10,Color("#7183A8"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	if game_over:
