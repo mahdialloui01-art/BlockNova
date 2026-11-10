@@ -5,6 +5,7 @@ signal settings_requested
 
 var best_score: int = 0
 var _best_label: Label
+var _root_control: Control
 
 const INK := Color("#263B4D")
 const MUTED := Color("#6D7D86")
@@ -18,6 +19,7 @@ func _ready() -> void:
 
 func _build() -> void:
 	var root := Control.new()
+	_root_control = root
 	root.name = "FullScreenHome"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -125,3 +127,7 @@ func set_best_score(value: int) -> void:
 	best_score = value
 	if is_instance_valid(_best_label):
 		_best_label.text = "BEST SCORE     %s" % best_score
+
+func set_ui_visible(value: bool) -> void:
+	if is_instance_valid(_root_control):
+		_root_control.visible = value
