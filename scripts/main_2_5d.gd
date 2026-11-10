@@ -84,9 +84,11 @@ func _setup_3d_view() -> void:
     _camera = Camera3D.new()
     _camera.projection = Camera3D.PROJECTION_ORTHOGONAL
     _camera.size = 40.0
+    _world_root.add_child(_camera)
+    # Apply the camera transform after it enters the SubViewport's SceneTree.
+    # Otherwise Godot can keep the default orientation and render the board off-screen.
     _camera.position = Vector3(0, 22, 10)
     _camera.look_at(Vector3.ZERO, Vector3.UP)
-    _world_root.add_child(_camera)
     _camera.make_current()
 
     _models_root = Node3D.new()
