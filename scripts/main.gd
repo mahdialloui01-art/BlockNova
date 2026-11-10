@@ -206,10 +206,36 @@ func _draw_modal(heading: String, subtitle: String, primary: String, secondary: 
 	_draw_button(Rect2(w*0.20,h*0.53,w*0.60,48),primary,Color("#6658E8"))
 	_draw_button(Rect2(w*0.20,h*0.59,w*0.60,42),secondary,Color("#35435F"))
 
+func _dominant_board_color() -> Color:
+	var counts: Array[int] = []
+	for i in range(COLORS.size()):
+		counts.append(0)
+	if board.size() == GRID:
+		for row in board:
+			if row is Array:
+				for value in row:
+					var index := int(value)
+					if index >= 0 and index < counts.size():
+						counts[index] += 1
+	# When the board is empty, theme the screen around the strongest color in the current tray.
+	if counts.max() == 0:
+		for value in piece_colors:
+			for i in range(COLORS.size()):
+				if value is Color and value.is_equal_approx(COLORS[i]):
+					counts[i] += 1
+	var dominant_index := 0
+	for i in range(1, counts.size()):
+		if counts[i] > counts[dominant_index]:
+			dominant_index = i
+	return COLORS[dominant_index]
+
 func _draw_background() -> void:
 	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
-	var top_color := Color("#FFF0D2") if menu_screen else Color("#101B35")
-	var bottom_color := Color("#E9A45F") if menu_screen else Color("#172747")
+	var dominant := _dominant_board_color()
+	var play_top := Color("#101B35").lerp(dominant.darkened(0.78), 0.48)
+	var play_bottom := Color("#172747").lerp(dominant.darkened(0.72), 0.38)
+	var top_color := Color("#FFF0D2") if menu_screen else play_top
+	var bottom_color := Color("#E9A45F") if menu_screen else play_bottom
 	# Layered vertical gradient: clean at phone scale and sharp on high-density displays.
 	var bands := 72
 	for i in range(bands):
@@ -237,8 +263,8 @@ func _draw_background() -> void:
 			draw_circle(Vector2(fx, fy), 2.2, Color(1.0, 0.94, 0.65, 0.78))
 	else:
 		# Restrained ambient light pools keep the play board readable.
-		draw_circle(Vector2(size.x * 0.08, size.y * 0.31), size.x * 0.48, Color(0.18, 0.48, 0.76, 0.075))
-		draw_circle(Vector2(size.x * 0.94, size.y * 0.78), size.x * 0.42, Color(0.42, 0.24, 0.76, 0.07))
+		draw_circle(Vector2(size.x * 0.08, size.y * 0.31), size.x * 0.48, Color(dominant.r, dominant.g, dominant.b, 0.105))
+		draw_circle(Vector2(size.x * 0.94, size.y * 0.78), size.x * 0.42, Color(dominant.r, dominant.g, dominant.b, 0.075))
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var shadow := StyleBoxFlat.new()
@@ -417,9 +443,18 @@ func _try_place(at: Vector2i) -> void:
 	for y in range(GRID):
 		if not (board[y] is Array) or board[y].size() != GRID:
 			return
-	var color_index: int = COLORS.find(piece_colors[selected])
-	if color_index < 0:
-		color_index = 0
+	var color_index := 0
+	var closest_color_distance := INF
+	for i in range(COLORS.size()):
+		var candidate_distance := piece_colors[selected].to_rgba32() ^ COLORS[i].to_rgba32()
+		# Exact palette lookup with a safe fallback for serialized/rounded Color values.
+		if piece_colors[selected].is_equal_approx(COLORS[i]):
+			color_index = i
+			closest_color_distance = 0.0
+			break
+		if closest_color_distance > 0.0 and candidate_distance == 0:
+			color_index = i
+			closest_color_distance = 0.0
 	for c in shape:
 		var target_y: int = at.y + c.y
 		var target_x: int = at.x + c.x
