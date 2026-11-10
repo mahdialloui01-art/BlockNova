@@ -50,6 +50,14 @@ func _build_world() -> void:
  var env_node := WorldEnvironment.new()
  var env := Environment.new()
  env.background_mode = Environment.BG_SKY
+ var sky := Sky.new()
+ var sky_mat := ProceduralSkyMaterial.new()
+ sky_mat.sky_top_color = Color("#17294B")
+ sky_mat.sky_horizon_color = Color("#7186A8")
+ sky_mat.ground_bottom_color = Color("#080F1D")
+ sky_mat.ground_horizon_color = Color("#263957")
+ sky.sky_material = sky_mat
+ env.sky = sky
  env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
  env.ambient_light_color = Color("#9AAED0")
  env.ambient_light_energy = 0.72
@@ -62,12 +70,16 @@ func _build_world() -> void:
  sun.shadow_enabled = true
  add_child(sun)
  camera_3d = Camera3D.new()
+ camera_3d.name = "Main3DCamera"
  camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
- camera_3d.size = 20.5
+ camera_3d.size = 15.5
+ add_child(camera_3d)
+ # IMPORTANT: set the camera transform only after it enters the SceneTree.
+ # look_at() before add_child() can leave a newly-created camera with its default
+ # horizontal -Z orientation, placing the entire board outside the camera view.
  camera_3d.position = Vector3(0, 22, 16)
  camera_3d.look_at(Vector3(0, 0, 1.7), Vector3.UP)
- camera_3d.current = true
- add_child(camera_3d)
+ camera_3d.make_current()
  var floor := MeshInstance3D.new()
  var floor_mesh := PlaneMesh.new()
  floor_mesh.size = Vector2(80, 80)
