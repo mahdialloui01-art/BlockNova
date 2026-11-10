@@ -172,16 +172,31 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 
 # Physically-inspired piano voice built from inharmonic partials and a fast hammer attack.
 # Every partial decays at its own rate, giving a plucked-string/piano character.
+# Rich, physically-inspired piano voice: three slightly detuned strings,
+# inharmonic upper partials, hammer transient, and a resonant soundboard.
 func _piano_voice(frequency: float, local_t: float, velocity: float = 0.7) -> float:
-	var attack := 1.0 - exp(-local_t * 1050.0)
-	var fundamental := sin(TAU * frequency * local_t) * exp(-4.8 * local_t) * 0.58
-	var second := sin(TAU * frequency * 2.003 * local_t) * exp(-7.2 * local_t) * 0.22
-	var third := sin(TAU * frequency * 3.009 * local_t) * exp(-10.5 * local_t) * 0.105
-	var fourth := sin(TAU * frequency * 4.025 * local_t) * exp(-14.0 * local_t) * 0.052
-	var fifth := sin(TAU * frequency * 5.06 * local_t) * exp(-19.0 * local_t) * 0.022
-	var hammer := sin(TAU * 6100.0 * local_t) * exp(-190.0 * local_t) * 0.018
-	var body := fundamental + second + third + fourth + fifth + hammer
-	return body * attack * velocity * exp(-1.7 * local_t)
+	var t := maxf(local_t, 0.0)
+	var attack := 1.0 - exp(-t * 1500.0)
+	var release := exp(-t * 2.15)
+	# Three piano strings create natural beating and width without a synthetic chorus.
+	var string_a := sin(TAU * frequency * t) * 0.37
+	var string_b := sin(TAU * frequency * 1.0018 * t + 0.12) * 0.34
+	var string_c := sin(TAU * frequency * 0.9983 * t - 0.09) * 0.29
+	var fundamental := (string_a + string_b + string_c) * exp(-3.9 * t)
+	# Stiff piano strings are slightly inharmonic; upper partials decay faster.
+	var partial_2 := sin(TAU * frequency * 2.004 * t) * exp(-6.2 * t) * 0.24
+	var partial_3 := sin(TAU * frequency * 3.016 * t) * exp(-9.0 * t) * 0.125
+	var partial_4 := sin(TAU * frequency * 4.038 * t) * exp(-12.8 * t) * 0.064
+	var partial_5 := sin(TAU * frequency * 5.070 * t) * exp(-17.5 * t) * 0.030
+	var partial_6 := sin(TAU * frequency * 6.115 * t) * exp(-23.0 * t) * 0.012
+	# Felt hammer noise gives a soft, detailed attack rather than a beep-like onset.
+	var hammer := (sin(TAU * 2870.0 * t) * 0.48 + sin(TAU * 4310.0 * t) * 0.31 + sin(TAU * 6170.0 * t) * 0.21) * exp(-105.0 * t) * 0.075
+	# Low soundboard modes add warmth and a wooden piano-body character.
+	var body := sin(TAU * 118.0 * t) * exp(-5.8 * t) * 0.035
+	body += sin(TAU * 226.0 * t) * exp(-7.0 * t) * 0.025
+	body += sin(TAU * 347.0 * t) * exp(-8.5 * t) * 0.016
+	var tone := fundamental + partial_2 + partial_3 + partial_4 + partial_5 + partial_6 + hammer + body
+	return tone * attack * release * velocity
 
 func _play_sfx(effect: String, note_index: int = 0, combo_index: int = 0) -> void:
 	if not sound_enabled or not _sfx_players.has(effect):
