@@ -5,6 +5,7 @@ extends "res://scripts/main.gd"
 const BOX_DATA_GZIP_BASE64 := "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";
 const BOX_GLTF_JSON := "{\"asset\":{\"version\":\"2.0\"},\"scene\":0,\"scenes\":[{\"nodes\":[0]}],\"nodes\":[{\"mesh\":0}],\"materials\":[{\"pbrMetallicRoughness\":{\"metallicFactor\":0.05,\"roughnessFactor\":0.58,\"baseColorFactor\":[0.24,0.62,0.92,1]}}],\"meshes\":[{\"primitives\":[{\"attributes\":{\"POSITION\":0,\"TEXCOORD_0\":1,\"NORMAL\":2},\"indices\":3,\"material\":0}]}],\"accessors\":[{\"bufferView\":0,\"componentType\":5126,\"count\":320,\"max\":[0.5,1,0.5],\"min\":[-0.5,0,-0.5],\"type\":\"VEC3\"},{\"bufferView\":1,\"componentType\":5126,\"count\":320,\"type\":\"VEC2\"},{\"bufferView\":2,\"componentType\":5126,\"count\":320,\"type\":\"VEC3\"},{\"bufferView\":3,\"componentType\":5123,\"count\":564,\"type\":\"SCALAR\"}],\"bufferViews\":[{\"buffer\":0,\"byteLength\":3840,\"byteOffset\":0,\"target\":34962},{\"buffer\":0,\"byteLength\":2560,\"byteOffset\":3840,\"target\":34962},{\"buffer\":0,\"byteLength\":3840,\"byteOffset\":6400,\"target\":34962},{\"buffer\":0,\"byteLength\":1128,\"byteOffset\":10240,\"target\":34963}],\"buffers\":[{\"byteLength\":11368,\"uri\":\"box_small.bin\"}]}";
 
+var _overlay_layer: CanvasLayer
 var _viewport_container: SubViewportContainer
 var _viewport: SubViewport
 var _world_root: Node3D
@@ -32,14 +33,21 @@ func _process(_delta: float) -> void:
         _sync_3d_models()
 
 func _setup_3d_view() -> void:
+    _overlay_layer = CanvasLayer.new()
+    _overlay_layer.name = "ThreeDRenderLayer"
+    _overlay_layer.layer = 10
+    add_child(_overlay_layer)
+
     _viewport_container = SubViewportContainer.new()
     _viewport_container.name = "KayKit3DOverlay"
     _viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _viewport_container.position = Vector2.ZERO
+    _viewport_container.size = get_viewport_rect().size
     _viewport_container.stretch = true
     _viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _viewport_container.z_index = 100
-    _viewport_container.show_behind_parent = false
-    add_child(_viewport_container)
+    _viewport_container.z_index = 0
+    _viewport_container.top_level = true
+    _overlay_layer.add_child(_viewport_container)
 
     _viewport = SubViewport.new()
     _viewport.name = "KayKit3DViewport"
