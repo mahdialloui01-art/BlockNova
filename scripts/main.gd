@@ -99,25 +99,8 @@ func _draw() -> void:
 	_layout()
 	var w := size.x
 	var h := size.y
-	draw_rect(Rect2(Vector2.ZERO, size), Color("#F5B36C"))
-	# Sunlit sky, soft clouds and rolling green hills add life to the menu.
-	if screen == Screen.HOME or screen == Screen.SETTINGS:
-		draw_circle(Vector2(size.x * 0.82, size.y * 0.13), size.x * 0.10, Color("#FFF0B0"))
-		draw_circle(Vector2(size.x * 0.82, size.y * 0.13), size.x * 0.145, Color(1.0, 0.92, 0.62, 0.22))
-		for cloud in [Vector2(size.x * 0.14, size.y * 0.17), Vector2(size.x * 0.53, size.y * 0.11), Vector2(size.x * 0.92, size.y * 0.32)]:
-			draw_circle(cloud, size.x * 0.045, Color(1.0, 0.98, 0.90, 0.72))
-			draw_circle(cloud + Vector2(size.x * 0.04, -size.y * 0.012), size.x * 0.052, Color(1.0, 0.98, 0.90, 0.72))
-			draw_circle(cloud + Vector2(size.x * 0.08, 0), size.x * 0.04, Color(1.0, 0.98, 0.90, 0.72))
-		var far_hill := PackedVector2Array([Vector2(0,size.y*0.67),Vector2(size.x*0.22,size.y*0.54),Vector2(size.x*0.48,size.y*0.66),Vector2(size.x*0.75,size.y*0.53),Vector2(size.x,size.y*0.65),Vector2(size.x,size.y),Vector2(0,size.y)])
-		draw_colored_polygon(far_hill, Color("#E89A58"))
-		var near_hill := PackedVector2Array([Vector2(0,size.y*0.79),Vector2(size.x*0.27,size.y*0.69),Vector2(size.x*0.58,size.y*0.78),Vector2(size.x*0.82,size.y*0.68),Vector2(size.x,size.y*0.77),Vector2(size.x,size.y),Vector2(0,size.y)])
-		draw_colored_polygon(near_hill, Color("#66B978"))
-		for i in range(14):
-			var fx := fmod(float(i) * 83.0 + 17.0, size.x)
-			var fy := size.y * (0.76 + fmod(float(i) * 0.031, 0.19))
-			draw_circle(Vector2(fx, fy), 2.5, Color("#FFF3B5"))
-	draw_circle(Vector2(w * 0.12, h * 0.16), w * 0.42, Color(0.12,0.28,0.48,0.10))
-	draw_circle(Vector2(w * 0.92, h * 0.72), w * 0.38, Color(0.38,0.18,0.48,0.08))
+	_draw_background()
+
 	match screen:
 		Screen.HOME:
 			_draw_home()
@@ -191,16 +174,68 @@ func _draw_modal(heading: String, subtitle: String, primary: String, secondary: 
 	_draw_button(Rect2(w*0.20,h*0.53,w*0.60,48),primary,Color("#6658E8"))
 	_draw_button(Rect2(w*0.20,h*0.59,w*0.60,42),secondary,Color("#35435F"))
 
+func _draw_background() -> void:
+	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
+	var top_color := Color("#FFF0D2") if menu_screen else Color("#101B35")
+	var bottom_color := Color("#E9A45F") if menu_screen else Color("#172747")
+	# Layered vertical gradient: clean at phone scale and sharp on high-density displays.
+	var bands := 72
+	for i in range(bands):
+		var t := float(i) / float(bands - 1)
+		var band_color := top_color.lerp(bottom_color, t)
+		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), band_color)
+	if menu_screen:
+		# Warm sun halo and soft cloud silhouettes.
+		draw_circle(Vector2(size.x * 0.82, size.y * 0.135), size.x * 0.19, Color(1.0, 0.72, 0.30, 0.10))
+		draw_circle(Vector2(size.x * 0.82, size.y * 0.135), size.x * 0.135, Color(1.0, 0.84, 0.45, 0.18))
+		draw_circle(Vector2(size.x * 0.82, size.y * 0.135), size.x * 0.082, Color("#FFF4C9"))
+		for cloud in [Vector2(size.x * 0.13, size.y * 0.17), Vector2(size.x * 0.49, size.y * 0.105), Vector2(size.x * 0.93, size.y * 0.30)]:
+			draw_circle(cloud, size.x * 0.037, Color(1.0, 1.0, 0.96, 0.70))
+			draw_circle(cloud + Vector2(size.x * 0.035, -size.y * 0.012), size.x * 0.047, Color(1.0, 1.0, 0.96, 0.78))
+			draw_circle(cloud + Vector2(size.x * 0.075, 0), size.x * 0.034, Color(1.0, 1.0, 0.96, 0.70))
+		var far_hill := PackedVector2Array([Vector2(0,size.y*0.68),Vector2(size.x*0.18,size.y*0.57),Vector2(size.x*0.43,size.y*0.66),Vector2(size.x*0.73,size.y*0.54),Vector2(size.x,size.y*0.65),Vector2(size.x,size.y),Vector2(0,size.y)])
+		draw_colored_polygon(far_hill, Color("#E9A16A"))
+		var near_hill := PackedVector2Array([Vector2(0,size.y*0.80),Vector2(size.x*0.25,size.y*0.70),Vector2(size.x*0.56,size.y*0.79),Vector2(size.x*0.82,size.y*0.68),Vector2(size.x,size.y*0.77),Vector2(size.x,size.y),Vector2(0,size.y)])
+		draw_colored_polygon(near_hill, Color("#55A979"))
+		var front_hill := PackedVector2Array([Vector2(0,size.y*0.90),Vector2(size.x*0.30,size.y*0.82),Vector2(size.x*0.66,size.y*0.91),Vector2(size.x,size.y*0.83),Vector2(size.x,size.y),Vector2(0,size.y)])
+		draw_colored_polygon(front_hill, Color("#347F68"))
+		for i in range(22):
+			var fx := fmod(float(i) * 67.0 + 19.0, size.x)
+			var fy := size.y * (0.76 + fmod(float(i) * 0.027, 0.20))
+			draw_circle(Vector2(fx, fy), 2.2, Color(1.0, 0.94, 0.65, 0.78))
+	else:
+		# Restrained ambient light pools keep the play board readable.
+		draw_circle(Vector2(size.x * 0.08, size.y * 0.31), size.x * 0.48, Color(0.18, 0.48, 0.76, 0.075))
+		draw_circle(Vector2(size.x * 0.94, size.y * 0.78), size.x * 0.42, Color(0.42, 0.24, 0.76, 0.07))
+
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
-	# Fast primitive fill avoids StyleBox allocation and cache-key work during drag.
-	draw_rect(rect,color,true)
+	var shadow := StyleBoxFlat.new()
+	shadow.bg_color = Color(0.035, 0.07, 0.13, 0.30)
+	shadow.set_corner_radius_all(int(radius))
+	shadow.shadow_color = Color(0.04, 0.07, 0.12, 0.34)
+	shadow.shadow_size = 9
+	shadow.shadow_offset = Vector2(0, 6)
+	draw_style_box(shadow, rect)
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = color
+	panel.set_corner_radius_all(int(radius))
+	panel.set_border_width_all(1)
+	panel.border_color = color.lightened(0.22)
+	draw_style_box(panel, rect)
+	draw_line(rect.position + Vector2(radius, 1.5), Vector2(rect.end.x - radius, rect.position.y + 1.5), Color(1, 1, 1, 0.18), 1.5, true)
 
 func _draw_button(rect: Rect2,label: String,color: Color) -> void:
-	_draw_panel(rect,color,14)
+	_draw_panel(rect, color, 18)
+	var sheen := StyleBoxFlat.new()
+	sheen.bg_color = Color(1, 1, 1, 0.10)
+	sheen.set_corner_radius_all(14)
+	draw_style_box(sheen, Rect2(rect.position + Vector2(5, 4), Vector2(rect.size.x - 10, rect.size.y * 0.32)))
 	_draw_text(label,Vector2(0,rect.position.y+rect.size.y*0.62),15,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,size.x)
 
 func _draw_text(value: String,pos: Vector2,font_size: int,color: Color,align: HorizontalAlignment=HORIZONTAL_ALIGNMENT_LEFT,width: float=-1.0) -> void:
-	draw_string(font,pos,value,align,width if width>0 else 300.0,font_size,color)
+	var text_width := width if width > 0 else 300.0
+	draw_string(font, pos + Vector2(0, 2), value, align, text_width, font_size, Color(0.12, 0.16, 0.22, 0.22))
+	draw_string(font,pos,value,align,text_width,font_size,color)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
