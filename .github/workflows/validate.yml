@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate:
-    name: Import and parse project
+    name: Import, parse, and runtime smoke test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,11 +25,29 @@ jobs:
       - name: Verify Godot version
         run: godot --version
 
-      - name: Import project and validate scripts
-        run: godot --headless --editor --path . --quit
+      - name: Import and strictly validate all scripts
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --editor --path . --quit 2>&1 | tee godot-validation.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-validation.log; then
+            echo "Godot reported script/import errors."
+            exit 1
+          fi
+
+      - name: Run main scene smoke test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --quit-after 3 2>&1 | tee godot-runtime.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-runtime.log; then
+            echo "Main scene failed during startup."
+            exit 1
+          fi
 
       - name: Verify required project files
         run: |
           test -s project.godot
           test -s scenes/main.tscn
           test -s scripts/main.gd
+          test -s scripts/main_3d.gd
