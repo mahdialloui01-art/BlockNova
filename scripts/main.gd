@@ -120,11 +120,10 @@ func _new_pieces() -> void:
 	if not _any_move():
 		game_over = true
 
-	if is_instance_valid(home_ui):
-		home_ui.visible = screen == Screen.HOME
-
 func _draw() -> void:
 	_layout()
+	if is_instance_valid(home_ui):
+		home_ui.visible = screen == Screen.HOME
 	var w := size.x
 	var h := size.y
 	_draw_background()
