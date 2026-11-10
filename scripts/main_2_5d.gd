@@ -64,7 +64,8 @@ func _setup_3d_view() -> void:
     var light := DirectionalLight3D.new()
     light.rotation_degrees = Vector3(-48, -28, 0)
     light.light_energy = 1.15
-    light.shadow_enabled = false
+    light.shadow_enabled = true
+    light.shadow_bias = 0.05
     _world_root.add_child(light)
 
     _camera = Camera3D.new()
@@ -151,25 +152,36 @@ func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name
     instance.mesh = _kaykit_mesh
     instance.material_override = _material_for(color)
     instance.scale = Vector3.ONE * world_scale
-    instance.position = _screen_to_board_plane(at) + Vector3(0, 0.025, 0)
+    instance.position = _screen_to_board_plane(at) + Vector3(0, 0.012, 0)
     _models_root.add_child(instance)
 
 func _sync_3d_models() -> void:
     if _viewport == null or _models_root == null:
         return
     var visible_game := screen == Screen.PLAYING and not game_over
-    _viewport_container.visible = visible_game
-    var signature := str(screen, "|", board, "|", pieces, "|", piece_colors, "|", selected, "|", size)
+    var visible_home := screen == Screen.HOME
+    var visible_3d := visible_game or visible_home
+    _viewport_container.visible = visible_3d
+    var signature := str(screen, "|", board, "|", pieces, "|", piece_colors, "|", selected, "|", dragging, "|", pointer, "|", size)
     if signature == _last_signature:
         return
     _last_signature = signature
     for child in _models_root.get_children():
         child.queue_free()
-    if not visible_game or _kaykit_mesh == null:
+    if not visible_3d or _kaykit_mesh == null:
         return
 
     _viewport.size = Vector2i(maxi(1, int(size.x)), maxi(1, int(size.y)))
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
+    if visible_home:
+        var logo_center := Vector2(size.x * 0.5, size.y * 0.56)
+        var logo_unit := minf(size.x * 0.105, 42.0)
+        var logo_pattern := [Vector2i(-1,-1), Vector2i(0,-1), Vector2i(1,-1), Vector2i(-1,0), Vector2i(0,0), Vector2i(1,0), Vector2i(0,1), Vector2i(1,1)]
+        for i in range(logo_pattern.size()):
+            var logo_point := logo_center + Vector2(logo_pattern[i]) * logo_unit
+            _add_mesh_instance(logo_point, logo_unit * world_per_pixel * 0.94, COLORS[i % COLORS.size()], "HomeLogo3D_%d" % i)
+        return
+
     var block_world := cell * world_per_pixel * 0.91
     var tile_mesh := BoxMesh.new()
     tile_mesh.size = Vector3(block_world * 0.94, 0.11, block_world * 0.94)
@@ -183,15 +195,27 @@ func _sync_3d_models() -> void:
             var tile := MeshInstance3D.new()
             tile.mesh = tile_mesh
             tile.material_override = tile_material
-            tile.position = _screen_to_board_plane(center) + Vector3(0, -0.105, 0)
+            tile.position = _screen_to_board_plane(center) + Vector3(0, -0.055, 0)
             _models_root.add_child(tile)
             var color_index := int(board[y][x])
             if color_index >= 0 and color_index < COLORS.size():
                 _add_mesh_instance(center, block_world, COLORS[color_index], "KayKitBlock_%d_%d" % [x, y])
 
+    var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
+    var plate := MeshInstance3D.new()
+    var plate_mesh := BoxMesh.new()
+    plate_mesh.size = Vector3(board_size * world_per_pixel + 0.18, 0.12, board_size * world_per_pixel + 0.18)
+    plate.mesh = plate_mesh
+    var plate_material := StandardMaterial3D.new()
+    plate_material.albedo_color = Color("#101B31")
+    plate_material.roughness = 0.82
+    plate.material_override = plate_material
+    plate.position = _screen_to_board_plane(board_center) + Vector3(0, -0.13, 0)
+    _models_root.add_child(plate)
+
     var w := size.x
     for i in range(3):
-        if pieces[i].is_empty():
+        if pieces[i].is_empty() or (dragging and selected == i):
             continue
         var shape: Array = pieces[i]
         var minp := Vector2i(99, 99)
@@ -207,3 +231,11 @@ func _sync_3d_models() -> void:
         for c in shape:
             var piece_center := origin + Vector2(c - minp) * unit + Vector2(unit * 0.5, unit * 0.5)
             _add_mesh_instance(piece_center, unit * world_per_pixel * 0.96, piece_colors[i], "Tray3D_%d" % i)
+
+    if dragging and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
+        var ghost_origin := _cell_at(pointer)
+        var ghost_valid := _can_place(pieces[selected], ghost_origin)
+        var ghost_color := piece_colors[selected] if ghost_valid else Color("#FF536B")
+        for c in pieces[selected]:
+            var ghost_center := board_origin + Vector2((ghost_origin.x + c.x + 0.5) * cell, (ghost_origin.y + c.y + 0.5) * cell)
+            _add_mesh_instance(ghost_center, block_world * 0.96, ghost_color, "DragGhost3D_%d_%d" % [c.x, c.y])
