@@ -81,8 +81,11 @@ func _setup_3d_view() -> void:
     _world_root.add_child(_camera)
     # Apply the camera transform after it enters the SubViewport's SceneTree.
     # Otherwise Godot can keep the default orientation and render the board off-screen.
-    _camera.position = Vector3(0, 22, 10)
-    _camera.look_at(Vector3.ZERO, Vector3.UP)
+    # Face-on orthographic view: the solid blocks retain real 3D volume,
+    # but only their top/front face is visible to the player (no side faces).
+    # Using -Z as camera-up keeps the board's screen-space rows aligned with +Z.
+    _camera.position = Vector3(0, 26, 0)
+    _camera.look_at(Vector3.ZERO, Vector3(0, 0, -1))
     _camera.make_current()
 
     _models_root = Node3D.new()
