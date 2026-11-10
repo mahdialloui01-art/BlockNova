@@ -47,50 +47,112 @@ var home_ui: CanvasLayer
 var _sfx_players: Dictionary = {}
 
 func _setup_audio() -> void:
-	# Original synthesized effects: no external audio files or copyright dependencies.
-	for effect in ["ui", "place", "clear", "error"]:
+	# Layered, original game-audio palette. Generated locally so no external
+	# asset downloads, licensing uncertainty, or missing-file startup failures.
+	for effect in ["ui", "pickup", "place", "clear", "combo", "error", "gameover"]:
 		var player := AudioStreamPlayer.new()
 		player.name = "SFX_" + effect
-		player.volume_db = -7.0 if effect == "ui" else (-3.5 if effect == "clear" else -5.0)
+		player.volume_db = -9.0
+		match effect:
+			"place": player.volume_db = -4.0
+			"clear", "combo": player.volume_db = -2.5
+			"gameover": player.volume_db = -3.5
+			"error": player.volume_db = -7.0
 		player.stream = _make_sfx_stream(effect)
 		add_child(player)
 		_sfx_players[effect] = player
 
 func _make_sfx_stream(effect: String) -> AudioStreamWAV:
-	var sample_rate := 22050
-	var duration := 0.055
-	var start_hz := 760.0
-	var end_hz := 520.0
+	var sample_rate := 44100
+	var duration := 0.12
 	match effect:
-		"place":
-			duration = 0.125
-			start_hz = 390.0
-			end_hz = 245.0
-		"clear":
-			duration = 0.245
-			start_hz = 520.0
-			end_hz = 940.0
-		"error":
-			duration = 0.095
-			start_hz = 210.0
-			end_hz = 135.0
-		"ui":
-			duration = 0.060
-			start_hz = 780.0
-			end_hz = 560.0
+		"ui": duration = 0.075
+		"pickup": duration = 0.11
+		"place": duration = 0.19
+		"clear": duration = 0.34
+		"combo": duration = 0.48
+		"error": duration = 0.17
+		"gameover": duration = 0.62
 	var sample_count: int = maxi(1, int(round(sample_rate * duration)))
 	var pcm := PackedByteArray()
 	pcm.resize(sample_count * 2)
-	var phase := 0.0
+	var phase_a := 0.0
+	var phase_b := 0.0
+	var phase_c := 0.0
 	for i in range(sample_count):
 		var t := float(i) / float(sample_count)
-		var frequency := lerpf(start_hz, end_hz, t)
-		phase += frequency / float(sample_rate)
-		var fundamental := sin(TAU * phase)
-		var harmonic := sin(TAU * phase * 2.0) * (0.16 if effect == "place" or effect == "clear" else 0.07)
-		var envelope := pow(1.0 - t, 2.0)
-		var attack := minf(1.0, t * 35.0)
-		var sample := clampf((fundamental + harmonic) * envelope * attack * 0.68, -1.0, 1.0)
+		var f_a := 520.0
+		var f_b := 1040.0
+		var f_c := 1560.0
+		var amp_a := 0.72
+		var amp_b := 0.20
+		var amp_c := 0.08
+		var decay := 5.0
+		var noise_mix := 0.0
+		match effect:
+			"ui":
+				f_a = lerpf(880.0, 690.0, t)
+				f_b = lerpf(1320.0, 1040.0, t)
+				amp_a = 0.42
+				amp_b = 0.18
+				decay = 15.0
+			"pickup":
+				f_a = lerpf(420.0, 820.0, t)
+				f_b = lerpf(840.0, 1640.0, t)
+				amp_a = 0.52
+				amp_b = 0.28
+				decay = 9.0
+			"place":
+				f_a = lerpf(185.0, 92.0, t)
+				f_b = lerpf(560.0, 250.0, t)
+				f_c = lerpf(1900.0, 620.0, t)
+				amp_a = 0.78
+				amp_b = 0.34
+				amp_c = 0.12
+				decay = 13.0
+				noise_mix = 0.22
+			"clear":
+				f_a = lerpf(480.0, 1180.0, t)
+				f_b = lerpf(720.0, 1760.0, t)
+				f_c = lerpf(1440.0, 2360.0, t)
+				amp_a = 0.42
+				amp_b = 0.30
+				amp_c = 0.18
+				decay = 4.2
+			"combo":
+				f_a = lerpf(390.0, 1480.0, t)
+				f_b = lerpf(780.0, 2220.0, t)
+				f_c = lerpf(1170.0, 2960.0, t)
+				amp_a = 0.42
+				amp_b = 0.34
+				amp_c = 0.23
+				decay = 2.8
+			"error":
+				f_a = lerpf(245.0, 155.0, t)
+				f_b = lerpf(310.0, 205.0, t)
+				amp_a = 0.60
+				amp_b = 0.28
+				decay = 8.0
+				noise_mix = 0.08
+			"gameover":
+				f_a = lerpf(620.0, 105.0, t)
+				f_b = lerpf(930.0, 158.0, t)
+				f_c = lerpf(1240.0, 210.0, t)
+				amp_a = 0.56
+				amp_b = 0.25
+				amp_c = 0.12
+				decay = 3.2
+		phase_a += f_a / float(sample_rate)
+		phase_b += f_b / float(sample_rate)
+		phase_c += f_c / float(sample_rate)
+		var envelope := exp(-decay * t)
+		var attack := minf(1.0, t * 90.0)
+		var tone := sin(TAU * phase_a) * amp_a
+		tone += sin(TAU * phase_b) * amp_b
+		tone += sin(TAU * phase_c) * amp_c
+		# A tiny deterministic transient adds a crisp tactile edge to impacts.
+		var transient := sin(TAU * 7100.0 * t) * exp(-85.0 * t) * noise_mix
+		var sample := clampf((tone * envelope + transient) * attack * 0.72, -1.0, 1.0)
 		pcm.encode_s16(i * 2, int(round(sample * 32767.0)))
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
@@ -185,6 +247,7 @@ func _new_pieces() -> void:
 		piece_colors.append(COLORS[randi_range(0, COLORS.size() - 1)])
 	if not _any_move():
 		game_over = true
+			_play_sfx("gameover")
 
 func _draw() -> void:
 	_layout()
@@ -439,7 +502,7 @@ func _pointer_down(pos: Vector2) -> void:
 				var center_x := w*(float(i)+0.5)/3.0
 				if pos.distance_to(Vector2(center_x,center_y)) < 82 and not pieces[i].is_empty():
 					selected=i
-					_play_sfx("ui")
+					_play_sfx("pickup")
 					drag_cell_offset = _piece_cell_under_finger(i, pos)
 					dragging=true
 					queue_redraw()
@@ -537,7 +600,7 @@ func _try_place(at: Vector2i) -> void:
 	selected=-1
 	var cleared := _clear_lines()
 	if cleared > 0:
-		_play_sfx("clear")
+		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear")
 		combo_streak += 1
 		score += 75 * combo_streak
 	else:
@@ -553,6 +616,7 @@ func _try_place(at: Vector2i) -> void:
 		_new_pieces()
 	elif not _any_move():
 		game_over=true
+		_play_sfx("gameover")
 	queue_redraw()
 
 func _clear_lines() -> int:
