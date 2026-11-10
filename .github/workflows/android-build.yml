@@ -126,6 +126,16 @@ jobs:
             exit 1
           fi
 
+      - name: Run deterministic 10x10 placement and scoring tests
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script tests/test_grid_rules.gd --audio-driver Dummy 2>&1 | tee godot-rules-test.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|ERROR:" godot-rules-test.log; then
+            echo "Gameplay regression test failed; refusing to export."
+            exit 1
+          fi
+
       - name: Export APK
         run: |
           mkdir -p build
