@@ -41,11 +41,13 @@ var use_3d_visuals := false
 var sound_enabled := true
 var vibration_enabled := true
 var config: ConfigFile
+var home_ui: CanvasLayer
 
 func _ready() -> void:
 	Input.set_use_accumulated_input(false)
 	font = ThemeDB.fallback_font
 	_load_settings()
+	_setup_home_ui()
 	_layout()
 	queue_redraw()
 
@@ -55,6 +57,29 @@ func _load_settings() -> void:
 	best = int(config.get_value("records", "best", 0))
 	sound_enabled = bool(config.get_value("settings", "sound", true))
 	vibration_enabled = bool(config.get_value("settings", "vibration", true))
+
+	if is_instance_valid(home_ui):
+		home_ui.set("best_score", best)
+
+func _setup_home_ui() -> void:
+	var ui_script = load("res://scripts/home_screen.gd")
+	home_ui = ui_script.new()
+	home_ui.name = "ProfessionalHomeUI"
+	add_child(home_ui)
+	home_ui.set("best_score", best)
+	home_ui.connect("play_requested", Callable(self, "_on_home_play"))
+	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
+
+func _on_home_play() -> void:
+	_reset_game()
+	if is_instance_valid(home_ui):
+		home_ui.visible = false
+
+func _on_home_settings() -> void:
+	screen = Screen.SETTINGS
+	if is_instance_valid(home_ui):
+		home_ui.visible = false
+	queue_redraw()
 
 func _save_settings() -> void:
 	config.set_value("records", "best", best)
@@ -95,6 +120,9 @@ func _new_pieces() -> void:
 	if not _any_move():
 		game_over = true
 
+	if is_instance_valid(home_ui):
+		home_ui.visible = screen == Screen.HOME
+
 func _draw() -> void:
 	_layout()
 	var w := size.x
@@ -115,6 +143,8 @@ func _draw() -> void:
 		return
 
 func _draw_home() -> void:
+	if is_instance_valid(home_ui):
+		return
 	var w := size.x
 	var h := size.y
 	_draw_text("BLOCK", Vector2(0,h*0.27), 27, Color("#B85D27"), HORIZONTAL_ALIGNMENT_CENTER,w)
@@ -238,6 +268,8 @@ func _draw_text(value: String,pos: Vector2,font_size: int,color: Color,align: Ho
 	draw_string(font,pos,value,align,text_width,font_size,color)
 
 func _input(event: InputEvent) -> void:
+	if screen == Screen.HOME and is_instance_valid(home_ui):
+		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_pointer_down(event.position)
