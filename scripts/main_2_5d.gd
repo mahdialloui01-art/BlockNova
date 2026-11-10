@@ -192,8 +192,10 @@ func _material_for(color: Color) -> StandardMaterial3D:
         return _material_cache[key]
     var material := StandardMaterial3D.new()
     # Filled, softly rounded puzzle tile with gentle top-face gradient and restrained gloss.
-    material.albedo_color = color.lightened(0.10)
-    material.roughness = 0.30
+    material.albedo_color = color
+    material.emission_enabled = true
+    material.emission = color * 0.10
+    material.roughness = 0.27
     material.metallic = 0.0
     material.metallic_specular = 0.38
     material.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
