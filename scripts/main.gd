@@ -99,7 +99,7 @@ func _draw() -> void:
 	_layout()
 	var w := size.x
 	var h := size.y
-	draw_rect(Rect2(Vector2.ZERO, size), Color("#090F20"))
+	draw_rect(Rect2(Vector2.ZERO, size), Color("#F5B36C"))
 	draw_circle(Vector2(w * 0.12, h * 0.16), w * 0.42, Color(0.12,0.28,0.48,0.10))
 	draw_circle(Vector2(w * 0.92, h * 0.72), w * 0.38, Color(0.38,0.18,0.48,0.08))
 	match screen:
@@ -118,13 +118,13 @@ func _draw() -> void:
 func _draw_home() -> void:
 	var w := size.x
 	var h := size.y
-	_draw_text("BLOCK", Vector2(0,h*0.27), 27, Color("#8EA2CA"), HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("NOVA", Vector2(0,h*0.35), 64, Color("#F5F8FF"), HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("THINK • PLACE • CLEAR", Vector2(0,h*0.395), 13, Color("#48D7F2"), HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("BLOCK", Vector2(0,h*0.27), 27, Color("#B85D27"), HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("NOVA", Vector2(0,h*0.35), 64, Color("#FFF8E8"), HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("THINK • PLACE • CLEAR", Vector2(0,h*0.395), 13, Color("#FFF0B0"), HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_logo_board(Vector2(w*0.5,h*0.56))
-	_draw_button(Rect2(w*0.14,h*0.73,w*0.72,62),"PLAY",Color("#6658E8"))
-	_draw_button(Rect2(w*0.14,h*0.815,w*0.72,54),"SETTINGS",Color("#1C2B49"))
-	_draw_text("BEST SCORE  "+str(best),Vector2(0,h*0.93),13,Color("#FFD477"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_button(Rect2(w*0.14,h*0.73,w*0.72,62),"PLAY",Color("#FF9F1C"))
+	_draw_button(Rect2(w*0.14,h*0.815,w*0.72,54),"SETTINGS",Color("#159E8C"))
+	_draw_text("BEST SCORE  "+str(best),Vector2(0,h*0.93),13,Color("#FFF0B0"),HORIZONTAL_ALIGNMENT_CENTER,w)
 
 func _draw_logo_board(center: Vector2) -> void:
 	if use_3d_visuals:
