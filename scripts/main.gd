@@ -319,9 +319,24 @@ func _try_place(at: Vector2i) -> void:
 	var shape: Array=pieces[selected]
 	if not _can_place(shape,at):
 		return
+	# Validate the board before writing to avoid invalid Android grid access.
+	if board.size() != GRID:
+		return
+	for y in range(GRID):
+		if not (board[y] is Array) or board[y].size() != GRID:
+			return
+	var color_index: int = COLORS.find(piece_colors[selected])
+	if color_index < 0:
+		color_index = 0
 	for c in shape:
-		board[at.y+c.y][at.x+c.x]=COLORS.find(piece_colors[selected])
-	score+=shape.size()*5
+		var target_y: int = at.y + c.y
+		var target_x: int = at.x + c.x
+		if target_y < 0 or target_y >= GRID or target_x < 0 or target_x >= GRID:
+			return
+		var row: Array = board[target_y]
+		row[target_x] = color_index
+		board[target_y] = row
+	score += shape.size() * 5
 	pieces[selected]=[]
 	selected=-1
 	_clear_lines()
@@ -330,7 +345,7 @@ func _try_place(at: Vector2i) -> void:
 		_save_settings()
 	if vibration_enabled:
 		Input.vibrate_handheld(25)
-	if pieces.all(func(p): return p.is_empty()):
+	if _all_pieces_used():
 		_new_pieces()
 	elif not _any_move():
 		game_over=true
@@ -376,3 +391,9 @@ func _any_move() -> bool:
 				if _can_place(shape,Vector2i(x,y)):
 					return true
 	return false
+
+func _all_pieces_used() -> bool:
+	for piece in pieces:
+		if not piece.is_empty():
+			return false
+	return true
