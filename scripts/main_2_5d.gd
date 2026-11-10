@@ -124,15 +124,53 @@ func _material_for(color: Color) -> StandardMaterial3D:
     var key := color.to_html(true)
     if _material_cache.has(key):
         return _material_cache[key]
-    var material: StandardMaterial3D
-    material = StandardMaterial3D.new()
-    # Apply a polished colored material to the imported KayKit cube geometry.
-    material.albedo_color = color.lightened(0.10)
-    material.roughness = 0.24
-    material.metallic = 0.12
-    material.metallic_specular = 0.55
+    var material := StandardMaterial3D.new()
+    # Saturated enamel finish: brighter top-facing surfaces, glossy bevel highlights.
+    material.albedo_color = color.lightened(0.16)
+    material.roughness = 0.20
+    material.metallic = 0.08
+    material.metallic_specular = 0.72
+    material.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+    material.clearcoat_enabled = true
+    material.clearcoat = 0.28
+    material.clearcoat_roughness = 0.18
     _material_cache[key] = material
     return material
+
+func _center_glow_material(color: Color) -> ShaderMaterial:
+    var material := ShaderMaterial.new()
+    var shader := Shader.new()
+    shader.code = """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled;
+uniform vec4 glow_color : source_color = vec4(1.0);
+void fragment() {
+    vec2 p = UV - vec2(0.5);
+    float r = length(p);
+    float glow = exp(-r * r * 30.0);
+    float soft_edge = smoothstep(0.52, 0.12, r);
+    ALBEDO = glow_color.rgb;
+    EMISSION = glow_color.rgb * (0.20 + glow * 0.85);
+    ALPHA = soft_edge * (0.10 + glow * 0.24);
+}
+"""
+    material.shader = shader
+    material.set_shader_parameter("glow_color", color.lightened(0.42))
+    return material
+
+func _add_center_glow(parent: Node3D, world_scale: float, color: Color) -> void:
+    var glow := MeshInstance3D.new()
+    glow.name = "SoftCenterHighlight"
+    var plane := PlaneMesh.new()
+    plane.size = Vector2(0.76, 0.76)
+    glow.mesh = plane
+    glow.material_override = _center_glow_material(color)
+    glow.scale = Vector3(world_scale, 1.0, world_scale)
+    # PlaneMesh lies in X/Y; rotate onto the cube's upward-facing X/Z surface.
+    glow.rotation_degrees.x = -90.0
+    glow.position = Vector3(0, world_scale * 0.49, 0)
+    glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(glow)
 
 func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name: String, lift: float = 0.0, vertical_scale: float = 1.0) -> void:
     var instance := MeshInstance3D.new()
@@ -142,6 +180,7 @@ func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name
     instance.scale = Vector3(world_scale, world_scale * vertical_scale, world_scale)
     instance.position = _screen_to_board_plane(at) + Vector3(0, lift, 0)
     _models_root.add_child(instance)
+    _add_center_glow(instance, world_scale, color)
 
 func _append_box_surface(tool: SurfaceTool, box: BoxMesh, center: Vector3, dimensions: Vector3) -> void:
     var basis := Basis.from_scale(dimensions)
