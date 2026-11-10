@@ -233,9 +233,8 @@ func _draw_background() -> void:
 	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
 	var dominant := _dominant_board_color()
 	# Full-bleed warm color theme: the dominant tile hue drives the whole play screen.
-	var warm_base := dominant.lightened(0.20)
-	var play_top := Color("#FFF0D2").lerp(warm_base.lightened(0.38), 0.72)
-	var play_bottom := Color("#FFE1B5").lerp(warm_base, 0.88)
+	var play_top := dominant.lerp(Color("#FFF0D2"), 0.18)
+	var play_bottom := dominant.lerp(Color("#FFE1B5"), 0.08)
 	var top_color := Color("#FFF1D7") if menu_screen else play_top
 	var bottom_color := Color("#FFB86B") if menu_screen else play_bottom
 	# Layered vertical gradient: clean at phone scale and sharp on high-density displays.
@@ -256,9 +255,9 @@ func _draw_background() -> void:
 		var far_hill := PackedVector2Array([Vector2(0,size.y*0.68),Vector2(size.x*0.18,size.y*0.57),Vector2(size.x*0.43,size.y*0.66),Vector2(size.x*0.73,size.y*0.54),Vector2(size.x,size.y*0.65),Vector2(size.x,size.y),Vector2(0,size.y)])
 		draw_colored_polygon(far_hill, Color("#E9A16A"))
 		var near_hill := PackedVector2Array([Vector2(0,size.y*0.80),Vector2(size.x*0.25,size.y*0.70),Vector2(size.x*0.56,size.y*0.79),Vector2(size.x*0.82,size.y*0.68),Vector2(size.x,size.y*0.77),Vector2(size.x,size.y),Vector2(0,size.y)])
-		draw_colored_polygon(near_hill, Color("#55A979"))
+		draw_colored_polygon(near_hill, Color("#F28C56"))
 		var front_hill := PackedVector2Array([Vector2(0,size.y*0.90),Vector2(size.x*0.30,size.y*0.82),Vector2(size.x*0.66,size.y*0.91),Vector2(size.x,size.y*0.83),Vector2(size.x,size.y),Vector2(0,size.y)])
-		draw_colored_polygon(front_hill, Color("#347F68"))
+		draw_colored_polygon(front_hill, Color("#D96B43"))
 		for i in range(22):
 			var fx := fmod(float(i) * 67.0 + 19.0, size.x)
 			var fy := size.y * (0.76 + fmod(float(i) * 0.027, 0.20))
