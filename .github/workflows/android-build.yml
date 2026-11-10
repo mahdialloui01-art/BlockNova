@@ -54,6 +54,21 @@ jobs:
           EOF
           cat "$HOME/.config/godot/editor_settings-4.4.tres"
 
+      - name: Strict Godot startup validation
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --editor --path . --quit 2>&1 | tee godot-validation.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-validation.log; then
+            echo "Refusing to export an APK with Godot script errors."
+            exit 1
+          fi
+          godot --headless --path . --quit-after 3 2>&1 | tee godot-runtime.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-runtime.log; then
+            echo "Refusing to export: main scene failed during startup."
+            exit 1
+          fi
+
       - name: Export APK
         run: |
           mkdir -p build
