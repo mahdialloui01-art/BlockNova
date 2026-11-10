@@ -156,37 +156,7 @@ func _draw_game() -> void:
 	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#FFD477"))
 	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#26385B"))
 	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#8EA2CA"))
-	if not use_3d_visuals:
-		for y in range(GRID):
-			for x in range(GRID):
-				var p := board_origin+Vector2(x*cell,y*cell)
-				var rect := Rect2(p+Vector2(2,2),Vector2(cell-4,cell-4))
-				if board[y][x] == -1:
-					_draw_panel(rect,Color("#17233D"),5)
-				else:
-					_draw_block(rect,COLORS[board[y][x]])
 	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#8EA2CA"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	if not use_3d_visuals:
-		for i in range(3):
-			if pieces[i].is_empty() or (dragging and selected == i):
-				continue
-			var center := Vector2(w*(float(i)+0.5)/3.0,tray_y+55)
-			if selected == i:
-				_draw_panel(Rect2(center.x-58,center.y-48,116,104),Color("#26385B"),16)
-			var shape: Array = pieces[i]
-			var minp := Vector2i(99,99)
-			var maxp := Vector2i.ZERO
-			for c in shape:
-				minp.x=mini(minp.x,c.x)
-				minp.y=mini(minp.y,c.y)
-				maxp.x=maxi(maxp.x,c.x)
-				maxp.y=maxi(maxp.y,c.y)
-			var unit := minf(20.0,66.0/float(maxi(maxp.x-minp.x+1,maxp.y-minp.y+1)))
-			var origin := center-Vector2((maxp.x-minp.x+1)*unit,(maxp.y-minp.y+1)*unit)*0.5
-			for c in shape:
-				_draw_block(Rect2(origin+Vector2(c-minp)*unit+Vector2(1,1),Vector2(unit-2,unit-2)),piece_colors[i])
-	if dragging and selected >= 0 and not pieces[selected].is_empty() and not use_3d_visuals:
-		_draw_ghost()
 	_draw_text("Drag a shape onto the board  •  Clear rows & columns",Vector2(0,h*0.94),10,Color("#7183A8"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	if game_over:
 		_draw_modal("NO MORE MOVES","Final score: "+str(score),"PLAY AGAIN","HOME")
@@ -201,17 +171,6 @@ func _draw_modal(heading: String, subtitle: String, primary: String, secondary: 
 	_draw_button(Rect2(w*0.20,h*0.53,w*0.60,48),primary,Color("#6658E8"))
 	_draw_button(Rect2(w*0.20,h*0.59,w*0.60,42),secondary,Color("#35435F"))
 
-func _draw_ghost() -> void:
-	var shape: Array = pieces[selected]
-	var origin := _cell_at(pointer) - drag_cell_offset
-	var valid := _can_place(shape, origin)
-	var base: Color = piece_colors[selected] if valid else Color("#FF536B")
-	for c in shape:
-		var p := board_origin+Vector2(origin+c)*cell
-		var rect := Rect2(p+Vector2(2,2),Vector2(cell-4,cell-4))
-		_draw_panel(rect,Color(base.r,base.g,base.b,0.48),5)
-		draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),3)),Color(1,1,1,0.22),true)
-
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	# Fast primitive fill avoids StyleBox allocation and cache-key work during drag.
 	draw_rect(rect,color,true)
@@ -219,10 +178,6 @@ func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 func _draw_button(rect: Rect2,label: String,color: Color) -> void:
 	_draw_panel(rect,color,14)
 	_draw_text(label,Vector2(0,rect.position.y+rect.size.y*0.62),15,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,size.x)
-
-func _draw_block(rect: Rect2,color: Color) -> void:
-	draw_rect(rect,color,true)
-	draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),3)),Color(1,1,1,0.20),true)
 
 func _draw_text(value: String,pos: Vector2,font_size: int,color: Color,align: HorizontalAlignment=HORIZONTAL_ALIGNMENT_LEFT,width: float=-1.0) -> void:
 	draw_string(font,pos,value,align,width if width>0 else 300.0,font_size,color)
