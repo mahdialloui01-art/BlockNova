@@ -248,7 +248,7 @@ func _sync_3d_models() -> void:
     if dragging and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
         var ghost_origin := _cell_at(pointer)
         var ghost_valid := _can_place(pieces[selected], ghost_origin)
-        var ghost_color := piece_colors[selected] if ghost_valid else Color("#FF536B")
+        var ghost_color: Color = piece_colors[selected] if ghost_valid else Color("#FF536B")
         for c in pieces[selected]:
             var ghost_center := board_origin + Vector2((ghost_origin.x + c.x + 0.5) * cell, (ghost_origin.y + c.y + 0.5) * cell)
             _add_mesh_instance(ghost_center, block_world * 0.96, ghost_color, "DragGhost3D_%d_%d" % [c.x, c.y])
