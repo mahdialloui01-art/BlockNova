@@ -153,6 +153,57 @@ func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name
     instance.position = _screen_to_board_plane(at) + Vector3(0, lift, 0)
     _models_root.add_child(instance)
 
+func _append_box_surface(tool: SurfaceTool, box: BoxMesh, center: Vector3, dimensions: Vector3) -> void:
+    var basis := Basis.from_scale(dimensions)
+    tool.append_from(box, 0, Transform3D(basis, center))
+
+func _build_single_board_mesh() -> MeshInstance3D:
+    # One merged 3D board object: a solid backing plate plus 64 inset cell platforms.
+    # The cell geometry is merged into the same ArrayMesh; no duplicated side rails.
+    var top_left := _screen_to_board_plane(board_origin)
+    var top_right := _screen_to_board_plane(board_origin + Vector2(board_size, 0))
+    var bottom_left := _screen_to_board_plane(board_origin + Vector2(0, board_size))
+    var bottom_right := _screen_to_board_plane(board_origin + Vector2(board_size, board_size))
+    var center := (top_left + top_right + bottom_left + bottom_right) * 0.25
+    var board_width := top_left.distance_to(top_right)
+    var board_depth := top_left.distance_to(bottom_left)
+    var x_axis := (top_right - top_left).normalized()
+    var z_axis := (bottom_left - top_left).normalized()
+    var basis := Basis(x_axis, Vector3.UP, z_axis).orthonormalized()
+    var mesh := ArrayMesh.new()
+    var backing := BoxMesh.new()
+    var backing_tool := SurfaceTool.new()
+    backing_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    _append_box_surface(backing_tool, backing, center + Vector3(0, -0.13, 0), Vector3(board_width + 0.22, 0.26, board_depth + 0.22))
+    backing_tool.commit(mesh)
+    var cells_tool := SurfaceTool.new()
+    cells_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var cell_box := BoxMesh.new()
+    for y in range(GRID):
+        for x in range(GRID):
+            var u := (float(x) + 0.5) / float(GRID) - 0.5
+            var v := (float(y) + 0.5) / float(GRID) - 0.5
+            var cell_center := center + x_axis * (u * board_width) + z_axis * (v * board_depth)
+            cell_center.y = 0.025
+            _append_box_surface(cells_tool, cell_box, cell_center, Vector3(board_width / GRID * 0.91, 0.10, board_depth / GRID * 0.91))
+    cells_tool.commit(mesh)
+    var board_node := MeshInstance3D.new()
+    board_node.name = "SingleSolid3DBoard"
+    board_node.mesh = mesh
+    var backing_mat := StandardMaterial3D.new()
+    backing_mat.albedo_color = Color("#101D35")
+    backing_mat.roughness = 0.72
+    backing_mat.metallic = 0.08
+    var cell_mat := StandardMaterial3D.new()
+    cell_mat.albedo_color = Color("#304B73")
+    cell_mat.roughness = 0.48
+    cell_mat.metallic = 0.10
+    mesh.surface_set_material(0, backing_mat)
+    mesh.surface_set_material(1, cell_mat)
+    board_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+    _models_root.add_child(board_node)
+    return board_node
+
 func _sync_3d_models() -> void:
     if _viewport == null or _models_root == null:
         return
@@ -160,7 +211,6 @@ func _sync_3d_models() -> void:
     var visible_home := screen == Screen.HOME
     var visible_3d := visible_game or visible_home
     _viewport_container.visible = visible_3d
-    # Rebuild the 3D preview only when the snapped target cell changes, not for every finger pixel.
     var drag_cell := _cell_at(pointer) - drag_cell_offset if dragging else Vector2i(-999, -999)
     var signature := str(screen, "|", board, "|", pieces, "|", piece_colors, "|", selected, "|", dragging, "|", drag_cell, "|", drag_cell_offset, "|", size)
     if signature == _last_signature:
@@ -182,36 +232,15 @@ func _sync_3d_models() -> void:
             _add_mesh_instance(logo_point, logo_unit * world_per_pixel * 0.94, COLORS[i % COLORS.size()], "HomeLogo3D_%d" % i)
         return
 
-    var block_world := cell * world_per_pixel * 0.91
-    var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
-    var base_tile_scale := block_world * 0.94
-    var tile_lift := -base_tile_scale * 0.085
-
-    # The complete 8x8 playfield is assembled from the imported KayKit cube mesh.
-    # Empty cells are shallow 3D tiles; occupied cells are full-height KayKit cubes.
+    # Render the board as one merged physical mesh, not 64 crate-like KayKit props.
+    _build_single_board_mesh()
+    var block_world := cell * world_per_pixel * 0.78
     for y in range(GRID):
         for x in range(GRID):
             var center := board_origin + Vector2((float(x) + 0.5) * cell, (float(y) + 0.5) * cell)
-            _add_mesh_instance(center, base_tile_scale, Color("#253653"), "BoardTile3D_%d_%d" % [x, y], tile_lift, 0.16)
             var color_index := int(board[y][x])
             if color_index >= 0 and color_index < COLORS.size():
-                _add_mesh_instance(center, block_world, COLORS[color_index], "KayKitBlock_%d_%d" % [x, y], block_world * 0.43)
-
-    # Raised perimeter is also made from KayKit models, not primitive drawing/BoxMesh geometry.
-    var rim_color := Color("#34496D")
-    var rim_scale := block_world * 0.94
-    var half_board := board_size * world_per_pixel * 0.5
-    var rim_segments := GRID
-    for i in range(rim_segments):
-        var offset := (float(i) + 0.5) * cell - board_size * 0.5
-        var north := board_center + Vector2(offset, -board_size * 0.5 - cell * 0.04)
-        var south := board_center + Vector2(offset, board_size * 0.5 + cell * 0.04)
-        var west := board_center + Vector2(-board_size * 0.5 - cell * 0.04, offset)
-        var east := board_center + Vector2(board_size * 0.5 + cell * 0.04, offset)
-        _add_mesh_instance(north, rim_scale, rim_color, "KayKitRimN_%d" % i, 0.0, 0.28)
-        _add_mesh_instance(south, rim_scale, rim_color, "KayKitRimS_%d" % i, 0.0, 0.28)
-        _add_mesh_instance(west, rim_scale, rim_color, "KayKitRimW_%d" % i, 0.0, 0.28)
-        _add_mesh_instance(east, rim_scale, rim_color, "KayKitRimE_%d" % i, 0.0, 0.28)
+                _add_mesh_instance(center, block_world, COLORS[color_index], "KayKitBlock_%d_%d" % [x, y], block_world * 0.48)
 
     var w := size.x
     for i in range(3):
@@ -230,7 +259,7 @@ func _sync_3d_models() -> void:
         var origin := center - Vector2((maxp.x - minp.x + 1) * unit, (maxp.y - minp.y + 1) * unit) * 0.5
         for c in shape:
             var piece_center := origin + Vector2(c - minp) * unit + Vector2(unit * 0.5, unit * 0.5)
-            _add_mesh_instance(piece_center, unit * world_per_pixel * 0.96, piece_colors[i], "Tray3D_%d" % i)
+            _add_mesh_instance(piece_center, unit * world_per_pixel * 0.84, piece_colors[i], "Tray3D_%d" % i)
 
     if dragging and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
         var ghost_origin := _cell_at(pointer) - drag_cell_offset
@@ -238,4 +267,4 @@ func _sync_3d_models() -> void:
         var ghost_color: Color = piece_colors[selected] if ghost_valid else Color("#FF536B")
         for c in pieces[selected]:
             var ghost_center := board_origin + Vector2((ghost_origin.x + c.x + 0.5) * cell, (ghost_origin.y + c.y + 0.5) * cell)
-            _add_mesh_instance(ghost_center, block_world * 0.96, ghost_color, "DragGhost3D_%d_%d" % [c.x, c.y])
+            _add_mesh_instance(ghost_center, block_world * 0.90, ghost_color, "DragGhost3D_%d_%d" % [c.x, c.y])
