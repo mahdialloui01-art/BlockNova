@@ -6,8 +6,7 @@ var _viewport: SubViewport
 var _world_root: Node3D
 var _camera: Camera3D
 var _models_root: Node3D
-var _kaykit_mesh: Mesh
-var _kaykit_base_material: Material
+var _sphere_mesh: SphereMesh
 var _sync_pending := true
 var _last_signature := ""
 var _material_cache: Dictionary = {}
@@ -18,7 +17,11 @@ func _enter_tree() -> void:
 func _ready() -> void:
     super._ready()
     _setup_3d_view()
-    _kaykit_mesh = _load_kaykit_box_mesh()
+    _sphere_mesh = SphereMesh.new()
+    _sphere_mesh.radius = 0.5
+    _sphere_mesh.height = 1.0
+    _sphere_mesh.radial_segments = 32
+    _sphere_mesh.rings = 20
     _sync_pending = true
     set_process(true)
 
@@ -130,22 +133,19 @@ func _material_for(color: Color) -> StandardMaterial3D:
     if _material_cache.has(key):
         return _material_cache[key]
     var material: StandardMaterial3D
-    if _kaykit_base_material is StandardMaterial3D:
-        material = (_kaykit_base_material as StandardMaterial3D).duplicate()
-    else:
-        material = StandardMaterial3D.new()
+    material = StandardMaterial3D.new()
     # Keep KayKit's original atlas texture and UV mapping while tinting each game piece.
     material.albedo_color = color.lightened(0.10)
-    material.roughness = 0.56
-    material.metallic = 0.06
-    material.metallic_specular = 0.28
+    material.roughness = 0.24
+    material.metallic = 0.12
+    material.metallic_specular = 0.55
     _material_cache[key] = material
     return material
 
 func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name: String, lift: float = 0.0, vertical_scale: float = 1.0) -> void:
     var instance := MeshInstance3D.new()
     instance.name = node_name
-    instance.mesh = _kaykit_mesh
+    instance.mesh = _sphere_mesh
     instance.material_override = _material_for(color)
     instance.scale = Vector3(world_scale, world_scale * vertical_scale, world_scale)
     instance.position = _screen_to_board_plane(at) + Vector3(0, lift, 0)
@@ -236,7 +236,7 @@ func _sync_3d_models() -> void:
     _last_signature = signature
     for child in _models_root.get_children():
         child.queue_free()
-    if not visible_3d or _kaykit_mesh == null:
+    if not visible_3d or _sphere_mesh == null:
         return
 
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
@@ -257,7 +257,7 @@ func _sync_3d_models() -> void:
             var center := board_origin + Vector2((float(x) + 0.5) * cell, (float(y) + 0.5) * cell)
             var color_index := int(board[y][x])
             if color_index >= 0 and color_index < COLORS.size():
-                _add_mesh_instance(center, block_world, COLORS[color_index], "KayKitBlock_%d_%d" % [x, y], block_world * 0.48)
+                _add_mesh_instance(center, block_world, COLORS[color_index], "BoardMarble_%d_%d" % [x, y], block_world * 0.48)
 
     var w := size.x
     for i in range(3):
@@ -276,7 +276,7 @@ func _sync_3d_models() -> void:
         var origin := center - Vector2((maxp.x - minp.x + 1) * unit, (maxp.y - minp.y + 1) * unit) * 0.5
         for c in shape:
             var piece_center := origin + Vector2(c - minp) * unit + Vector2(unit * 0.5, unit * 0.5)
-            _add_mesh_instance(piece_center, unit * world_per_pixel * 0.84, piece_colors[i], "Tray3D_%d" % i)
+            _add_mesh_instance(piece_center, unit * world_per_pixel * 0.84, piece_colors[i], "TrayMarble_%d" % i)
 
     if dragging and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
         var ghost_origin := _cell_at(pointer) - drag_cell_offset
@@ -284,4 +284,4 @@ func _sync_3d_models() -> void:
         var ghost_color: Color = piece_colors[selected] if ghost_valid else Color("#FF536B")
         for c in pieces[selected]:
             var ghost_center := board_origin + Vector2((ghost_origin.x + c.x + 0.5) * cell, (ghost_origin.y + c.y + 0.5) * cell)
-            _add_mesh_instance(ghost_center, block_world * 0.90, ghost_color, "DragGhost3D_%d_%d" % [c.x, c.y])
+            _add_mesh_instance(ghost_center, block_world * 0.90, ghost_color, "DragMarble_%d_%d" % [c.x, c.y])
