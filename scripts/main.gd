@@ -84,6 +84,7 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 	var lowpass_state := 0.0
 	var highpass_previous_input := 0.0
 	var highpass_previous_output := 0.0
+	var error_phase := 0.0
 	for i in range(sample_count):
 		var t := float(i) / float(sample_rate)
 		var normalized_t := float(i) / float(sample_count)
@@ -96,7 +97,7 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				body += sin(TAU * minf(placement_pitch * 1.25, 2990.0) * t) * exp(-58.0 * t) * 0.24
 				body += sin(TAU * minf(placement_pitch * 1.43, 2990.0) * t) * exp(-78.0 * t) * 0.10
 				var tap := (sin(TAU * 4700.0 * t) * 0.55 + sin(TAU * 6900.0 * t) * 0.25) * exp(-125.0 * t)
-			sample = (body + tap * 0.12) * attack * 0.82
+				sample = (body + tap * 0.12) * attack * 0.82
 			"clear", "combo":
 				# Three-note ascending reward arpeggio; each consecutive combo rises by 2 semitones.
 				var note_duration := 0.115
@@ -119,7 +120,8 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				var drop_t := minf(t / 0.1, 1.0)
 				var drop_frequency := 300.0 * pow(100.0 / 300.0, drop_t)
 				var error_env := exp(-13.0 * t) * minf(1.0, t * 90.0)
-				sample = (sin(TAU * drop_frequency * t) * 0.78 + sin(TAU * drop_frequency * 0.5 * t) * 0.12) * error_env
+				error_phase += drop_frequency / float(sample_rate)
+				sample = (sin(TAU * error_phase) * 0.78 + sin(TAU * error_phase * 0.5) * 0.12) * error_env
 			"ui":
 				var env := exp(-18.0 * normalized_t)
 				sample = (sin(TAU * lerpf(880.0, 690.0, normalized_t) * t) * 0.42 + sin(TAU * 1320.0 * t) * 0.12) * env
@@ -130,8 +132,8 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				var env := exp(-4.0 * normalized_t)
 				sample = (sin(TAU * lerpf(620.0, 105.0, normalized_t) * t) * 0.52 + sin(TAU * lerpf(930.0, 158.0, normalized_t) * t) * 0.22) * env
 			_:
-			var env := exp(-8.0 * normalized_t)
-			sample = sin(TAU * 520.0 * t) * env * 0.3
+				var env := exp(-8.0 * normalized_t)
+				sample = sin(TAU * 520.0 * t) * env * 0.3
 		# DSP: high-pass placement at 150 Hz; low-pass invalid drops at 800 Hz.
 		if effect == "place":
 			var hp_rc := 1.0 / (TAU * 150.0)
