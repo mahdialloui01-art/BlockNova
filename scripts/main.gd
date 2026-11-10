@@ -167,12 +167,13 @@ func _draw_settings() -> void:
 	var w := size.x
 	var h := size.y
 	_draw_text("SETTINGS",Vector2(0,h*0.20),31,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_panel(Rect2(w*0.09,h*0.30,w*0.82,220),Color("#151F38"),20)
-	_draw_text("VIBRATION",Vector2(w*0.16,h*0.37),15,Color("#EAF0FF"))
-	_draw_button(Rect2(w*0.64,h*0.34,w*0.20,42),"ON" if vibration_enabled else "OFF",Color("#287E78") if vibration_enabled else Color("#39445C"))
-	_draw_text("AUDIO EFFECTS",Vector2(w*0.16,h*0.47),15,Color("#EAF0FF"))
-	_draw_text("COMING SOON",Vector2(w*0.61,h*0.47),10,Color("#8EA2CA"))
-	_draw_text("BEST SCORE  "+str(best),Vector2(0,h*0.62),15,Color("#FFD477"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,270),Color("#182943"),24)
+	_draw_text("HAPTIC FEEDBACK",Vector2(w*0.14,h*0.355),14,Color("#EAF0FF"))
+	_draw_button(Rect2(w*0.66,h*0.33,w*0.20,42),"ON" if vibration_enabled else "OFF",Color("#287E78") if vibration_enabled else Color("#39445C"))
+	_draw_text("SOUND",Vector2(w*0.14,h*0.445),14,Color("#EAF0FF"))
+	_draw_button(Rect2(w*0.66,h*0.42,w*0.20,42),"ON" if sound_enabled else "OFF",Color("#287E78") if sound_enabled else Color("#39445C"))
+	_draw_text("Your preferences are saved on this device",Vector2(0,h*0.505),11,Color("#91A4BC"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("PERSONAL BEST     "+str(best),Vector2(0,h*0.625),15,Color("#FFD477"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_button(Rect2(w*0.14,h*0.76,w*0.72,58),"BACK",Color("#6658E8"))
 
 func _draw_game() -> void:
@@ -303,8 +304,10 @@ func _pointer_down(pos: Vector2) -> void:
 			queue_redraw()
 			return
 		Screen.SETTINGS:
-			if pos.y >= h*0.32 and pos.y <= h*0.41 and pos.x >= w*0.60:
+			if pos.y >= h*0.32 and pos.y <= h*0.40 and pos.x >= w*0.60:
 				vibration_enabled = not vibration_enabled
+			elif pos.y >= h*0.41 and pos.y <= h*0.49 and pos.x >= w*0.60:
+				sound_enabled = not sound_enabled
 			elif pos.y >= h*0.73:
 				screen=Screen.HOME
 			_save_settings()
