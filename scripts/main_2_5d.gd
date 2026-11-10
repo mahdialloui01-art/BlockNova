@@ -37,7 +37,7 @@ func _setup_3d_view() -> void:
     _viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _viewport_container.stretch = true
     _viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _viewport_container.z_index = -1
+    _viewport_container.z_index = 0
     add_child(_viewport_container)
 
     _viewport = SubViewport.new()
