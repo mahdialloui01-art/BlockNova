@@ -64,12 +64,12 @@ func _setup_audio() -> void:
 		_sfx_players[effect] = player
 
 func _make_sfx_stream(effect: String, note_index: int = 0) -> AudioStreamWAV:
-	var sample_rate := 44100
+	var sample_rate := 48000
 	var duration := 0.12
 	match effect:
 		"ui": duration = 0.075
 		"pickup": duration = 0.11
-		"place": duration = 0.19
+		"place": duration = 0.34
 		"clear": duration = 0.34
 		"combo": duration = 0.48
 		"error": duration = 0.17
@@ -156,6 +156,25 @@ func _make_sfx_stream(effect: String, note_index: int = 0) -> AudioStreamWAV:
 		# A tiny deterministic transient adds a crisp tactile edge to impacts.
 		var transient := sin(TAU * 7100.0 * t) * exp(-85.0 * t) * noise_mix
 		var sample := clampf((tone * envelope + transient) * attack * 0.72, -1.0, 1.0)
+		if effect == "place":
+			# Premium synthesized piano: stretched inharmonic partials, two subtly
+			# detuned strings, a soft hammer transient, and a natural multi-rate decay.
+			var piano_steps := [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26]
+			var piano_frequency := 261.6256 * pow(2.0, float(piano_steps[posmod(note_index, piano_steps.size())]) / 12.0)
+			var piano_tone := 0.0
+			var partial_amplitudes := [1.0, 0.48, 0.25, 0.16, 0.105, 0.075, 0.052, 0.038, 0.026]
+			var partial_decays := [4.8, 6.2, 8.0, 10.5, 13.0, 15.5, 18.0, 20.0, 22.0]
+			for partial in range(partial_amplitudes.size()):
+				var harmonic := float(partial + 1)
+				var stretch := sqrt(1.0 + 0.00018 * harmonic * harmonic)
+				var partial_frequency := piano_frequency * harmonic * stretch
+				var partial_phase := TAU * partial_frequency * t
+				var string_pair := sin(partial_phase) * 0.88 + sin(partial_phase * 1.0017) * 0.12
+				piano_tone += string_pair * partial_amplitudes[partial] * exp(-partial_decays[partial] * t)
+			var hammer := (sin(TAU * 6200.0 * t) * 0.55 + sin(TAU * 9100.0 * t) * 0.25) * exp(-105.0 * t)
+			var piano_attack := minf(1.0, t * 520.0)
+			var piano_sample := (piano_tone + hammer * 0.075) * piano_attack * 0.78
+			sample = clampf(piano_sample, -1.0, 1.0)
 		pcm.encode_s16(i * 2, int(round(sample * 32767.0)))
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
