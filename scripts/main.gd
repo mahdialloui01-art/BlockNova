@@ -196,10 +196,13 @@ func _draw_modal(heading: String, subtitle: String, primary: String, secondary: 
 func _draw_ghost() -> void:
 	var shape: Array = pieces[selected]
 	var origin := _cell_at(pointer)
+	var valid := _can_place(shape, origin)
+	var base: Color = piece_colors[selected] if valid else Color("#FF536B")
 	for c in shape:
 		var p := board_origin+Vector2(origin+c)*cell
-		var color: Color = piece_colors[selected]
-		draw_rect(Rect2(p+Vector2(2,2),Vector2(cell-4,cell-4)),Color(color.r,color.g,color.b,0.42),true,5)
+		var rect := Rect2(p+Vector2(2,2),Vector2(cell-4,cell-4))
+		_draw_panel(rect,Color(base.r,base.g,base.b,0.48),5)
+		draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),3)),Color(1,1,1,0.22),true)
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var style := StyleBoxFlat.new()
