@@ -298,7 +298,8 @@ func _process(delta: float) -> void:
 	_theme_target = _dominant_board_color()
 	var blend := 1.0 - exp(-delta * 2.6)
 	var next_color := _theme_color.lerp(_theme_target, blend)
-	if _theme_color.distance_to(next_color) > 0.0015:
+	var color_delta := maxf(maxf(absf(_theme_color.r - next_color.r), absf(_theme_color.g - next_color.g)), maxf(absf(_theme_color.b - next_color.b), absf(_theme_color.a - next_color.a)))
+	if color_delta > 0.0015:
 		_theme_color = next_color
 		queue_redraw()
 
