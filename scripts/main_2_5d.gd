@@ -147,12 +147,22 @@ func _make_rounded_block_mesh() -> Mesh:
                 var n10: Vector3 = normals[y][x + 1]
                 var n01: Vector3 = normals[y + 1][x]
                 var n11: Vector3 = normals[y + 1][x + 1]
-                tool.set_normal(n00); tool.add_vertex(p00)
-                tool.set_normal(n10); tool.add_vertex(p10)
-                tool.set_normal(n11); tool.add_vertex(p11)
-                tool.set_normal(n00); tool.add_vertex(p00)
-                tool.set_normal(n11); tool.add_vertex(p11)
-                tool.set_normal(n01); tool.add_vertex(p01)
+                # Keep triangle winding aligned with the supplied outward normals.
+                # The top and bottom faces use the opposite winding from the four sides.
+                if face == 2 or face == 3:
+                    tool.set_normal(n00); tool.add_vertex(p00)
+                    tool.set_normal(n11); tool.add_vertex(p11)
+                    tool.set_normal(n10); tool.add_vertex(p10)
+                    tool.set_normal(n00); tool.add_vertex(p00)
+                    tool.set_normal(n01); tool.add_vertex(p01)
+                    tool.set_normal(n11); tool.add_vertex(p11)
+                else:
+                    tool.set_normal(n00); tool.add_vertex(p00)
+                    tool.set_normal(n10); tool.add_vertex(p10)
+                    tool.set_normal(n11); tool.add_vertex(p11)
+                    tool.set_normal(n00); tool.add_vertex(p00)
+                    tool.set_normal(n11); tool.add_vertex(p11)
+                    tool.set_normal(n01); tool.add_vertex(p01)
     # Vertex normals are supplied above; no tangent basis is needed without a normal map.
     return tool.commit()
 
@@ -200,7 +210,7 @@ void fragment() {
     vec2 p = UV - vec2(0.5);
     float r = length(p);
     float glow = exp(-r * r * 30.0);
-    float soft_edge = smoothstep(0.52, 0.12, r);
+    float soft_edge = 1.0 - smoothstep(0.12, 0.52, r);
     ALBEDO = glow_color.rgb;
     EMISSION = glow_color.rgb * (0.20 + glow * 0.85);
     ALPHA = soft_edge * (0.10 + glow * 0.24);
