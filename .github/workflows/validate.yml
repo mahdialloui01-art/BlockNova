@@ -11,11 +11,16 @@ jobs:
   validate:
     name: Import and parse project
     runs-on: ubuntu-latest
-    container:
-      image: barichello/godot-ci:4.4.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Godot 4.4.1
+        uses: chickensoft-games/setup-godot@v1
+        with:
+          version: 4.4.1
+          use-dotnet: false
+          include-templates: true
 
       - name: Verify Godot version
         run: godot --version
