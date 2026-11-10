@@ -92,35 +92,6 @@ func _setup_3d_view() -> void:
     _models_root.name = "PuzzleMeshes"
     _world_root.add_child(_models_root)
 
-func _load_kaykit_box_mesh() -> Mesh:
-    const MODEL_PATH := "res://assets/kaykit/gltf/box_small.gltf"
-    # Runtime exports use Godot's imported-resource remap; the original .gltf
-    # source may not exist as a directly readable FileAccess path inside the APK.
-    # Resolve the model through ResourceLoader so the imported KayKit scene is used.
-    var packed_scene := ResourceLoader.load(MODEL_PATH) as PackedScene
-    if packed_scene == null:
-        push_error("Godot could not import the original KayKit GLTF scene.")
-        return null
-    var generated := packed_scene.instantiate()
-    var found := _find_mesh_instance(generated)
-    if found == null or found.mesh == null:
-        push_error("The original KayKit box_small GLTF contains no mesh instance.")
-        generated.free()
-        return null
-    _kaykit_base_material = found.mesh.surface_get_material(0) if found.mesh.get_surface_count() > 0 else null
-    var result: Mesh = found.mesh
-    generated.free()
-    return result
-
-func _find_mesh_instance(node: Node) -> MeshInstance3D:
-    if node is MeshInstance3D and node.mesh != null:
-        return node as MeshInstance3D
-    for child in node.get_children():
-        var found := _find_mesh_instance(child)
-        if found != null:
-            return found
-    return null
-
 func _screen_to_board_plane(screen_point: Vector2) -> Vector3:
     var origin := _camera.project_ray_origin(screen_point)
     var direction := _camera.project_ray_normal(screen_point)
