@@ -219,7 +219,6 @@ func _add_center_glow(parent: Node3D, world_scale: float, color: Color) -> void:
     glow.material_override = _center_glow_material(color)
     glow.scale = Vector3(world_scale, 1.0, world_scale)
     # PlaneMesh lies in X/Y; rotate onto the cube's upward-facing X/Z surface.
-    glow.rotation_degrees.x = -90.0
     glow.position = Vector3(0, world_scale * 0.505, 0)
     glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(glow)
@@ -308,6 +307,13 @@ func _build_single_board_mesh() -> MeshInstance3D:
 func _sync_3d_models() -> void:
     if _viewport == null or _models_root == null:
         return
+    # Match the transparent 3D viewport to the actual logical phone canvas.
+    # A fixed 1080x2160 viewport makes projected meshes drift away from touch/UI
+    # coordinates on devices with different aspect ratios or render resolutions.
+    var target_size := Vector2i(maxi(1, roundi(size.x)), maxi(1, roundi(size.y)))
+    if _viewport.size != target_size:
+        _viewport.size = target_size
+        _last_signature = ""
     var visible_game := screen == Screen.PLAYING and not game_over
     var visible_home := screen == Screen.HOME
     var visible_3d := visible_game or visible_home
