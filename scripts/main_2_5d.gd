@@ -305,17 +305,17 @@ func _build_single_board_mesh() -> MeshInstance3D:
     board_node.name = "OnePieceRecessed3DBoard"
     board_node.mesh = mesh
     var base_mat := StandardMaterial3D.new()
-    base_mat.albedo_color = Color("#101A30")
+    base_mat.albedo_color = Color("#F6B66B")
     base_mat.roughness = 0.68
-    base_mat.metallic = 0.12
+    base_mat.metallic = 0.02
     var floor_mat := StandardMaterial3D.new()
-    floor_mat.albedo_color = Color("#263D60")
+    floor_mat.albedo_color = Color("#FFE2B5")
     floor_mat.roughness = 0.42
-    floor_mat.metallic = 0.08
+    floor_mat.metallic = 0.0
     var wall_mat := StandardMaterial3D.new()
-    wall_mat.albedo_color = Color("#526B91")
+    wall_mat.albedo_color = Color("#E99A52")
     wall_mat.roughness = 0.38
-    wall_mat.metallic = 0.18
+    wall_mat.metallic = 0.02
     mesh.surface_set_material(0, base_mat)
     mesh.surface_set_material(1, floor_mat)
     mesh.surface_set_material(2, wall_mat)
