@@ -156,71 +156,71 @@ func _append_box_surface(tool: SurfaceTool, box: BoxMesh, center: Vector3, dimen
     tool.append_from(box, 0, Transform3D(basis, center))
 
 func _build_single_board_mesh() -> MeshInstance3D:
-	# A single physical board assembly with recessed wells, raised dividers and a thick base.
-	# All board geometry is merged into one ArrayMesh with separate material surfaces.
-	var top_left := _screen_to_board_plane(board_origin)
-	var top_right := _screen_to_board_plane(board_origin + Vector2(board_size, 0))
-	var bottom_left := _screen_to_board_plane(board_origin + Vector2(0, board_size))
-	var bottom_right := _screen_to_board_plane(board_origin + Vector2(board_size, board_size))
-	var center := (top_left + top_right + bottom_left + bottom_right) * 0.25
-	var board_width := top_left.distance_to(top_right)
-	var board_depth := top_left.distance_to(bottom_left)
-	var cell_width := board_width / float(GRID)
-	var cell_depth := board_depth / float(GRID)
-	var rail := minf(cell_width, cell_depth) * 0.075
-	var mesh := ArrayMesh.new()
-	var box := BoxMesh.new()
+    # A single physical board assembly with recessed wells, raised dividers and a thick base.
+    # All board geometry is merged into one ArrayMesh with separate material surfaces.
+    var top_left := _screen_to_board_plane(board_origin)
+    var top_right := _screen_to_board_plane(board_origin + Vector2(board_size, 0))
+    var bottom_left := _screen_to_board_plane(board_origin + Vector2(0, board_size))
+    var bottom_right := _screen_to_board_plane(board_origin + Vector2(board_size, board_size))
+    var center := (top_left + top_right + bottom_left + bottom_right) * 0.25
+    var board_width := top_left.distance_to(top_right)
+    var board_depth := top_left.distance_to(bottom_left)
+    var cell_width := board_width / float(GRID)
+    var cell_depth := board_depth / float(GRID)
+    var rail := minf(cell_width, cell_depth) * 0.075
+    var mesh := ArrayMesh.new()
+    var box := BoxMesh.new()
 
-	# Heavy uninterrupted underside gives the board a real solid body.
-	var base_tool := SurfaceTool.new()
-	base_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_append_box_surface(base_tool, box, center + Vector3(0, -0.135, 0), Vector3(board_width + 0.42, 0.27, board_depth + 0.42))
-	base_tool.commit(mesh)
+    # Heavy uninterrupted underside gives the board a real solid body.
+    var base_tool := SurfaceTool.new()
+    base_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    _append_box_surface(base_tool, box, center + Vector3(0, -0.135, 0), Vector3(board_width + 0.42, 0.27, board_depth + 0.42))
+    base_tool.commit(mesh)
 
-	# Cell floors sit low inside the wells, leaving a visible recessed channel around each one.
-	var floor_tool := SurfaceTool.new()
-	floor_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for y in range(GRID):
-		for x in range(GRID):
-			var u := (float(x) + 0.5) / float(GRID) - 0.5
-			var v := (float(y) + 0.5) / float(GRID) - 0.5
-			var cell_center := center + Vector3(u * board_width, 0.005, v * board_depth)
-			_append_box_surface(floor_tool, box, cell_center, Vector3(cell_width - rail * 1.35, 0.055, cell_depth - rail * 1.35))
-	floor_tool.commit(mesh)
+    # Cell floors sit low inside the wells, leaving a visible recessed channel around each one.
+    var floor_tool := SurfaceTool.new()
+    floor_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    for y in range(GRID):
+        for x in range(GRID):
+            var u := (float(x) + 0.5) / float(GRID) - 0.5
+            var v := (float(y) + 0.5) / float(GRID) - 0.5
+            var cell_center := center + Vector3(u * board_width, 0.005, v * board_depth)
+            _append_box_surface(floor_tool, box, cell_center, Vector3(cell_width - rail * 1.35, 0.055, cell_depth - rail * 1.35))
+    floor_tool.commit(mesh)
 
-	# Raised dividers form the actual walls between the recessed cells, not painted grid lines.
-	var wall_tool := SurfaceTool.new()
-	wall_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var wall_height := 0.18
-	var wall_y := 0.055
-	for i in range(GRID + 1):
-		var offset_x := -board_width * 0.5 + float(i) * cell_width
-		var offset_z := -board_depth * 0.5 + float(i) * cell_depth
-		_append_box_surface(wall_tool, box, center + Vector3(offset_x, wall_y, 0), Vector3(rail, wall_height, board_depth + 0.30))
-		_append_box_surface(wall_tool, box, center + Vector3(0, wall_y, offset_z), Vector3(board_width + 0.30, wall_height, rail))
-	wall_tool.commit(mesh)
+    # Raised dividers form the actual walls between the recessed cells, not painted grid lines.
+    var wall_tool := SurfaceTool.new()
+    wall_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var wall_height := 0.18
+    var wall_y := 0.055
+    for i in range(GRID + 1):
+        var offset_x := -board_width * 0.5 + float(i) * cell_width
+        var offset_z := -board_depth * 0.5 + float(i) * cell_depth
+        _append_box_surface(wall_tool, box, center + Vector3(offset_x, wall_y, 0), Vector3(rail, wall_height, board_depth + 0.30))
+        _append_box_surface(wall_tool, box, center + Vector3(0, wall_y, offset_z), Vector3(board_width + 0.30, wall_height, rail))
+    wall_tool.commit(mesh)
 
-	var board_node := MeshInstance3D.new()
-	board_node.name = "OnePieceRecessed3DBoard"
-	board_node.mesh = mesh
-	var base_mat := StandardMaterial3D.new()
-	base_mat.albedo_color = Color("#101A30")
-	base_mat.roughness = 0.68
-	base_mat.metallic = 0.12
-	var floor_mat := StandardMaterial3D.new()
-	floor_mat.albedo_color = Color("#263D60")
-	floor_mat.roughness = 0.42
-	floor_mat.metallic = 0.08
-	var wall_mat := StandardMaterial3D.new()
-	wall_mat.albedo_color = Color("#526B91")
-	wall_mat.roughness = 0.38
-	wall_mat.metallic = 0.18
-	mesh.surface_set_material(0, base_mat)
-	mesh.surface_set_material(1, floor_mat)
-	mesh.surface_set_material(2, wall_mat)
-	board_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	_models_root.add_child(board_node)
-	return board_node
+    var board_node := MeshInstance3D.new()
+    board_node.name = "OnePieceRecessed3DBoard"
+    board_node.mesh = mesh
+    var base_mat := StandardMaterial3D.new()
+    base_mat.albedo_color = Color("#101A30")
+    base_mat.roughness = 0.68
+    base_mat.metallic = 0.12
+    var floor_mat := StandardMaterial3D.new()
+    floor_mat.albedo_color = Color("#263D60")
+    floor_mat.roughness = 0.42
+    floor_mat.metallic = 0.08
+    var wall_mat := StandardMaterial3D.new()
+    wall_mat.albedo_color = Color("#526B91")
+    wall_mat.roughness = 0.38
+    wall_mat.metallic = 0.18
+    mesh.surface_set_material(0, base_mat)
+    mesh.surface_set_material(1, floor_mat)
+    mesh.surface_set_material(2, wall_mat)
+    board_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+    _models_root.add_child(board_node)
+    return board_node
 
 func _sync_3d_models() -> void:
     if _viewport == null or _models_root == null:
