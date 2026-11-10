@@ -408,3 +408,8 @@ func _all_pieces_used() -> bool:
 		if not piece.is_empty():
 			return false
 	return true
+
+func _draw_block(rect: Rect2, color: Color) -> void:
+	# Retained only for the non-gameplay home logo fallback; the board itself is rendered in 3D.
+	draw_rect(rect, color, true)
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x, 3.0)), color.lightened(0.28), true)
