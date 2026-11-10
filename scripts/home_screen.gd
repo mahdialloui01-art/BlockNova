@@ -11,7 +11,7 @@ const INK := Color("#63351F")
 const MUTED := Color("#A15E38")
 const CREAM := Color("#FFF3D9")
 const ORANGE := Color("#FF7A24")
-const TEAL := Color("#E85D45")
+const TEAL := Color("#E85D45") # Warm coral accent; no cool dark UI colors.
 
 func _ready() -> void:
 	layer = 20
