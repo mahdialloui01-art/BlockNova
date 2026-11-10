@@ -247,7 +247,7 @@ func _new_pieces() -> void:
 		piece_colors.append(COLORS[randi_range(0, COLORS.size() - 1)])
 	if not _any_move():
 		game_over = true
-			_play_sfx("gameover")
+		_play_sfx("gameover")
 
 func _draw() -> void:
 	_layout()
