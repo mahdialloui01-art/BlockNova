@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 10
+const GRID := 8
 const COLORS := [
 	Color("#48D7F2"), Color("#FFB84D"), Color("#A78BFA"),
 	Color("#62E6A5"), Color("#FF6F91"), Color("#F5E96B")
@@ -306,10 +306,18 @@ func _cell_at(pos: Vector2) -> Vector2i:
 	return Vector2i(floori((pos.x-board_origin.x)/cell),floori((pos.y-board_origin.y)/cell))
 
 func _can_place(shape: Array,at: Vector2i) -> bool:
+	# Never index the board until its dimensions have been verified.
+	if board.size() != GRID or shape.is_empty():
+		return false
+	for y in range(GRID):
+		if not (board[y] is Array) or board[y].size() != GRID:
+			return false
 	for c in shape:
-		var x=at.x+c.x
-		var y=at.y+c.y
-		if x<0 or y<0 or x>=GRID or y>=GRID or board[y][x] != -1:
+		var x: int = at.x + c.x
+		var y: int = at.y + c.y
+		if x < 0 or y < 0 or x >= GRID or y >= GRID:
+			return false
+		if int(board[y][x]) != -1:
 			return false
 	return true
 
