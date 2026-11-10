@@ -15,6 +15,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download and stage only the original KayKit model and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/kaykit-pack assets/kaykit
+          curl --fail --location --retry 3 \
+            "https://github.com/mahdialloui01-art/BlockNova/releases/download/game-assets-v1/KayKit_Dungeon_Pack_1.1_FREE.zip" \
+            --output /tmp/kaykit-dungeon-pack.zip
+          echo "6acb859d1aefae074f937d1e6f13656a7312b2bdb6d9f1232ebdade8d93d6a1c  /tmp/kaykit-dungeon-pack.zip" | sha256sum --check
+          unzip -q /tmp/kaykit-dungeon-pack.zip -d /tmp/kaykit-pack
+          MODEL="$(find /tmp/kaykit-pack -type f -path '*/Assets/gltf/box_small.gltf' -print -quit)"
+          if [ -z "$MODEL" ]; then
+            echo "Original KayKit box_small.gltf was not found in the release archive."
+            exit 1
+          fi
+          ASSETS_DIR="${MODEL%/gltf/box_small.gltf}"
+          python3 - "$MODEL" "$ASSETS_DIR" <<'PY'
+          import json, pathlib, shutil, sys
+          model = pathlib.Path(sys.argv[1]).resolve()
+          root = pathlib.Path(sys.argv[2]).resolve()
+          destination = pathlib.Path("assets/kaykit").resolve()
+          doc = json.loads(model.read_text(encoding="utf-8"))
+          dependencies = {model}
+          for section in ("buffers", "images"):
+              for item in doc.get(section, []):
+                  uri = item.get("uri", "")
+                  if not uri or uri.startswith("data:"):
+                      continue
+                  source = (model.parent / uri).resolve()
+                  if not source.is_file():
+                      raise SystemExit(f"Missing KayKit dependency: {source}")
+                  dependencies.add(source)
+          for source in dependencies:
+              try:
+                  relative = source.relative_to(root)
+              except ValueError:
+                  raise SystemExit(f"KayKit dependency escapes asset root: {source}")
+              target = destination / relative
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(source, target)
+              print(f"Staged original asset: {relative}")
+          PY
+          test -s assets/kaykit/gltf/box_small.gltf
+          test -s assets/kaykit/gltf/box_small.bin
+          echo "Original KayKit model staged without importing the entire 200+ model pack."
+
       - name: Install Godot 4.4.1
         uses: chickensoft-games/setup-godot@v1
         with:
@@ -29,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          godot --headless --editor --path . --quit 2>&1 | tee godot-validation.log
-          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-validation.log; then
+          xvfb-run -a godot --editor --path . --quit 2>&1 | tee godot-validation.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script" godot-validation.log; then
             echo "Godot reported script/import errors."
             exit 1
           fi
@@ -39,7 +85,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          godot --headless --path . --quit-after 3 2>&1 | tee godot-runtime.log
+          xvfb-run -a godot --path . --quit-after 3 2>&1 | tee godot-runtime.log
           if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-runtime.log; then
             echo "Main scene failed during startup."
             exit 1
