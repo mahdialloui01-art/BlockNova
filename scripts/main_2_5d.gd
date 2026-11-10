@@ -50,7 +50,8 @@ func _setup_3d_view() -> void:
     _viewport.size = Vector2i(1080, 2160)
     _viewport.transparent_bg = true
     _viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
-    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    # Render only when the board or pieces change; continuous redraw wastes mobile GPU time.
+    _viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
     _viewport_container.add_child(_viewport)
 
     _world_root = Node3D.new()
@@ -333,6 +334,8 @@ func _sync_3d_models() -> void:
     if signature == _last_signature:
         return
     _last_signature = signature
+    # A single frame is enough to refresh this static 3D scene after a state change.
+    _viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
     for child in _models_root.get_children():
         child.queue_free()
     if not visible_3d or _block_mesh == null:
