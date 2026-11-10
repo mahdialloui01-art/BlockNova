@@ -19,6 +19,13 @@ func _ready() -> void:
     super._ready()
     _setup_3d_view()
     _kaykit_mesh = _load_kaykit_box_mesh()
+    # Never leave the puzzle empty if Android cannot instantiate the imported GLTF.
+    # Prefer the original KayKit mesh; use a genuine 3D mesh fallback only on import failure.
+    if _kaykit_mesh == null:
+        push_warning("KayKit GLTF unavailable at runtime; enabling 3D cube fallback.")
+        var fallback_mesh := BoxMesh.new()
+        fallback_mesh.size = Vector3.ONE
+        _kaykit_mesh = fallback_mesh
     _sync_pending = true
     set_process(true)
 
