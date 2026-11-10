@@ -177,7 +177,9 @@ func _sync_3d_models() -> void:
     var visible_home := screen == Screen.HOME
     var visible_3d := visible_game or visible_home
     _viewport_container.visible = visible_3d
-    var signature := str(screen, "|", board, "|", pieces, "|", piece_colors, "|", selected, "|", dragging, "|", pointer, "|", size)
+    # Rebuild the 3D preview only when the snapped target cell changes, not for every finger pixel.
+    var drag_cell := _cell_at(pointer) - drag_cell_offset if dragging else Vector2i(-999, -999)
+    var signature := str(screen, "|", board, "|", pieces, "|", piece_colors, "|", selected, "|", dragging, "|", drag_cell, "|", drag_cell_offset, "|", size)
     if signature == _last_signature:
         return
     _last_signature = signature
@@ -248,7 +250,7 @@ func _sync_3d_models() -> void:
             _add_mesh_instance(piece_center, unit * world_per_pixel * 0.96, piece_colors[i], "Tray3D_%d" % i)
 
     if dragging and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
-        var ghost_origin := _cell_at(pointer)
+        var ghost_origin := _cell_at(pointer) - drag_cell_offset
         var ghost_valid := _can_place(pieces[selected], ghost_origin)
         var ghost_color: Color = piece_colors[selected] if ghost_valid else Color("#FF536B")
         for c in pieces[selected]:
