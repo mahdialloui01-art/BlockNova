@@ -28,6 +28,8 @@ var best := 0
 var selected := -1
 var dragging := false
 var pointer := Vector2.ZERO
+# Cell inside the grabbed piece that stays under the user's finger.
+var drag_cell_offset := Vector2i.ZERO
 var game_over := false
 var cell := 34.0
 var board_origin := Vector2.ZERO
@@ -201,7 +203,7 @@ func _draw_modal(heading: String, subtitle: String, primary: String, secondary: 
 
 func _draw_ghost() -> void:
 	var shape: Array = pieces[selected]
-	var origin := _cell_at(pointer)
+	var origin := _cell_at(pointer) - drag_cell_offset
 	var valid := _can_place(shape, origin)
 	var base: Color = piece_colors[selected] if valid else Color("#FF536B")
 	for c in shape:
@@ -237,13 +239,15 @@ func _input(event: InputEvent) -> void:
 		else:
 			_pointer_up(event.position)
 	elif event is InputEventScreenDrag:
-		pointer=event.position
-		dragging=true
-		queue_redraw()
+		if screen == Screen.PLAYING and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
+			pointer=event.position
+			dragging=true
+			queue_redraw()
 	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		pointer=event.position
-		dragging=true
-		queue_redraw()
+		if screen == Screen.PLAYING and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
+			pointer=event.position
+			dragging=true
+			queue_redraw()
 
 func _pointer_down(pos: Vector2) -> void:
 	pointer=pos
@@ -290,6 +294,7 @@ func _pointer_down(pos: Vector2) -> void:
 				var center_x := w*(float(i)+0.5)/3.0
 				if pos.distance_to(Vector2(center_x,center_y)) < 82 and not pieces[i].is_empty():
 					selected=i
+					drag_cell_offset = _piece_cell_under_finger(i, pos)
 					dragging=true
 					queue_redraw()
 					return
@@ -298,10 +303,39 @@ func _pointer_down(pos: Vector2) -> void:
 
 func _pointer_up(pos: Vector2) -> void:
 	pointer=pos
-	if screen == Screen.PLAYING and dragging and selected >= 0 and _inside_board(pos):
-		_try_place(_cell_at(pos))
+	if screen == Screen.PLAYING and dragging and selected >= 0:
+		if _inside_board(pos):
+			_try_place(_cell_at(pos) - drag_cell_offset)
+		else:
+			# Releasing outside the board cancels the move instead of leaving a stale selection.
+			selected = -1
 	dragging=false
+	drag_cell_offset = Vector2i.ZERO
 	queue_redraw()
+
+func _piece_cell_under_finger(piece_index: int, pos: Vector2) -> Vector2i:
+	if piece_index < 0 or piece_index >= pieces.size() or pieces[piece_index].is_empty():
+		return Vector2i.ZERO
+	var shape: Array = pieces[piece_index]
+	var minp := Vector2i(99, 99)
+	var maxp := Vector2i.ZERO
+	for c in shape:
+		minp.x = mini(minp.x, c.x)
+		minp.y = mini(minp.y, c.y)
+		maxp.x = maxi(maxp.x, c.x)
+		maxp.y = maxi(maxp.y, c.y)
+	var unit := minf(20.0, 66.0 / float(maxi(maxp.x - minp.x + 1, maxp.y - minp.y + 1)))
+	var center := Vector2(size.x * (float(piece_index) + 0.5) / 3.0, tray_y + 55)
+	var origin := center - Vector2((maxp.x - minp.x + 1) * unit, (maxp.y - minp.y + 1) * unit) * 0.5
+	var nearest := Vector2i.ZERO
+	var nearest_distance := INF
+	for c in shape:
+		var block_center := origin + Vector2(c - minp) * unit + Vector2(unit * 0.5, unit * 0.5)
+		var distance := pos.distance_squared_to(block_center)
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest = c
+	return nearest
 
 func _inside_board(pos: Vector2) -> bool:
 	return pos.x>=board_origin.x and pos.y>=board_origin.y and pos.x<board_origin.x+board_size and pos.y<board_origin.y+board_size
