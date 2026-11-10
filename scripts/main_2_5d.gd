@@ -93,7 +93,6 @@ func _make_rounded_block_mesh() -> Mesh:
     # Subdivided faces are projected onto a rounded-box profile to create real bevels.
     var tool := SurfaceTool.new()
     tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-    tool.set_smooth(true)
     var half := 0.5
     var radius := 0.105
     var inner := half - radius
