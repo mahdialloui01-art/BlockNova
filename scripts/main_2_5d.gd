@@ -64,13 +64,13 @@ func _setup_3d_view() -> void:
     environment.background_color = Color(0, 0, 0, 0)
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     environment.ambient_light_color = Color(0.72, 0.78, 0.92)
-    environment.ambient_light_energy = 0.8
+    environment.ambient_light_energy = 0.95
     environment_node.environment = environment
     _world_root.add_child(environment_node)
 
     var light := DirectionalLight3D.new()
     light.rotation_degrees = Vector3(-48, -28, 0)
-    light.light_energy = 1.15
+    light.light_energy = 1.30
     light.shadow_enabled = true
     light.shadow_bias = 0.05
     _world_root.add_child(light)
@@ -193,9 +193,12 @@ func _material_for(color: Color) -> StandardMaterial3D:
     var material := StandardMaterial3D.new()
     # Filled, softly rounded puzzle tile with gentle top-face gradient and restrained gloss.
     material.albedo_color = color
+    # Strong self-lit color prevents warm tiles from turning dull or dark after placement.
     material.emission_enabled = true
-    material.emission = color * 0.10
-    material.roughness = 0.27
+    material.emission = color
+    material.emission_energy_multiplier = 0.38
+    material.cull_mode = BaseMaterial3D.CULL_DISABLED
+    material.roughness = 0.32
     material.metallic = 0.0
     material.metallic_specular = 0.38
     material.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
@@ -219,11 +222,11 @@ void fragment() {
     float soft_edge = 1.0 - smoothstep(0.12, 0.52, r);
     ALBEDO = glow_color.rgb;
     EMISSION = glow_color.rgb * (0.20 + glow * 0.85);
-    ALPHA = soft_edge * (0.10 + glow * 0.24);
+    ALPHA = soft_edge * (0.035 + glow * 0.075);
 }
 """
     material.shader = shader
-    material.set_shader_parameter("glow_color", color.lightened(0.42))
+    material.set_shader_parameter("glow_color", color.lightened(0.16))
     return material
 
 func _add_center_glow(parent: Node3D, world_scale: float, color: Color) -> void:
