@@ -105,16 +105,17 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 				var note_offsets := [0.0, 4.0, 7.0]
 				var note_frequency: float = minf(combo_root * pow(2.0, note_offsets[note_slot] / 12.0), 1190.0)
 				var local_t := fmod(t, note_duration)
-				var note_env := exp(-10.0 * local_t) * minf(1.0, local_t * 95.0)
-				var fundamental := sin(TAU * note_frequency * local_t) * 0.48
-				fundamental += sin(TAU * note_frequency * 2.0 * local_t) * 0.17
-				# Bright chime partials occupy the requested 2.5–6 kHz band.
-				var chime_frequency := clampf(note_frequency * 5.0, 2500.0, 5900.0)
-				var chime := sin(TAU * chime_frequency * local_t) * 0.15
-				chime += sin(TAU * minf(chime_frequency * 1.31, 6000.0) * local_t) * 0.08
-				sample = (fundamental + chime) * note_env
-				if effect == "combo":
-					sample *= 1.12
+				if t < note_duration * 3.0:
+					var note_env := exp(-10.0 * local_t) * minf(1.0, local_t * 95.0)
+					var fundamental := sin(TAU * note_frequency * local_t) * 0.48
+					fundamental += sin(TAU * note_frequency * 2.0 * local_t) * 0.17
+					# Bright chime partials occupy the requested 2.5–6 kHz band.
+					var chime_frequency := clampf(note_frequency * 5.0, 2500.0, 5900.0)
+					var chime := sin(TAU * chime_frequency * local_t) * 0.15
+					chime += sin(TAU * minf(chime_frequency * 1.31, 6000.0) * local_t) * 0.08
+					sample = (fundamental + chime) * note_env
+					if effect == "combo":
+						sample *= 1.12
 			"error":
 				# Muted downward drop: 300 Hz to 100 Hz during the first 100 ms.
 				var drop_t := minf(t / 0.1, 1.0)
