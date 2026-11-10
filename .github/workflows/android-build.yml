@@ -100,16 +100,27 @@ jobs:
           EOF
           cat "$HOME/.config/godot/editor_settings-4.4.tres"
 
+      - name: Import original GLTF assets before runtime checks
+        shell: bash
+        run: |
+          set -o pipefail
+          xvfb-run -a godot --editor --path . --import --quit --rendering-method gl_compatibility --audio-driver Dummy 2>&1 | tee godot-import.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script" godot-import.log; then
+            echo "Godot asset import or script parsing failed."
+            exit 1
+          fi
+          test -s .godot/imported/box_small.gltf-*.scn || find .godot/imported -type f -iname '*box_small*' -print -quit | grep -q .
+
       - name: Strict Godot startup validation
         shell: bash
         run: |
           set -o pipefail
-          xvfb-run -a godot --editor --path . --quit 2>&1 | tee godot-validation.log
+          xvfb-run -a godot --editor --path . --quit --rendering-method gl_compatibility --audio-driver Dummy 2>&1 | tee godot-validation.log
           if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script" godot-validation.log; then
             echo "Refusing to export an APK with Godot script errors."
             exit 1
           fi
-          xvfb-run -a godot --path . --quit-after 3 2>&1 | tee godot-runtime.log
+          xvfb-run -a godot --path . --quit-after 3 --rendering-method gl_compatibility --audio-driver Dummy 2>&1 | tee godot-runtime.log
           if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-runtime.log; then
             echo "Refusing to export: main scene failed during startup."
             exit 1
@@ -118,7 +129,7 @@ jobs:
       - name: Export APK
         run: |
           mkdir -p build
-          godot --headless --verbose --path . --export-debug "Android" build/BlockNova.apk
+          godot --headless --rendering-method gl_compatibility --audio-driver Dummy --verbose --path . --export-debug "Android" build/BlockNova.apk
           test -s build/BlockNova.apk
 
       - name: Upload APK
