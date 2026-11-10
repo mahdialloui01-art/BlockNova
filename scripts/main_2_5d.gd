@@ -37,7 +37,8 @@ func _setup_3d_view() -> void:
     _viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _viewport_container.stretch = true
     _viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _viewport_container.z_index = 0
+    _viewport_container.z_index = 100
+    _viewport_container.show_behind_parent = false
     add_child(_viewport_container)
 
     _viewport = SubViewport.new()
@@ -74,8 +75,8 @@ func _setup_3d_view() -> void:
     _camera.size = 40.0
     _camera.position = Vector3(0, 22, 10)
     _camera.look_at(Vector3.ZERO, Vector3.UP)
-    _camera.current = true
     _world_root.add_child(_camera)
+    _camera.make_current()
 
     _models_root = Node3D.new()
     _models_root.name = "PuzzleMeshes"
