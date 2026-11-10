@@ -45,6 +45,7 @@ var vibration_enabled := true
 var config: ConfigFile
 var home_ui: CanvasLayer
 var _sfx_players: Dictionary = {}
+var placement_note_index := 0
 
 func _setup_audio() -> void:
 	# Layered, original game-audio palette. Generated locally so no external
@@ -62,7 +63,7 @@ func _setup_audio() -> void:
 		add_child(player)
 		_sfx_players[effect] = player
 
-func _make_sfx_stream(effect: String) -> AudioStreamWAV:
+func _make_sfx_stream(effect: String, note_index: int = 0) -> AudioStreamWAV:
 	var sample_rate := 44100
 	var duration := 0.12
 	match effect:
@@ -103,14 +104,16 @@ func _make_sfx_stream(effect: String) -> AudioStreamWAV:
 				amp_b = 0.28
 				decay = 9.0
 			"place":
-				f_a = lerpf(185.0, 92.0, t)
-				f_b = lerpf(560.0, 250.0, t)
-				f_c = lerpf(1900.0, 620.0, t)
-				amp_a = 0.78
-				amp_b = 0.34
-				amp_c = 0.12
-				decay = 13.0
-				noise_mix = 0.22
+				# Each placed shape gets its own note from a bright pop scale.
+				var root_note := 330.0 * pow(2.0, float(posmod(note_index, 12)) / 12.0)
+				f_a = root_note * lerpf(1.42, 0.78, t)
+				f_b = root_note * 2.01 * lerpf(1.18, 0.72, t)
+				f_c = root_note * 3.02 * lerpf(1.10, 0.64, t)
+				amp_a = 0.72
+				amp_b = 0.28
+				amp_c = 0.10
+				decay = 11.5
+				noise_mix = 0.14
 			"clear":
 				f_a = lerpf(480.0, 1180.0, t)
 				f_b = lerpf(720.0, 1760.0, t)
@@ -161,11 +164,13 @@ func _make_sfx_stream(effect: String) -> AudioStreamWAV:
 	stream.data = pcm
 	return stream
 
-func _play_sfx(effect: String) -> void:
+func _play_sfx(effect: String, note_index: int = 0) -> void:
 	if not sound_enabled or not _sfx_players.has(effect):
 		return
 	var player: AudioStreamPlayer = _sfx_players[effect]
 	player.stop()
+	if effect == "place":
+		player.stream = _make_sfx_stream("place", note_index)
 	player.play()
 
 func _ready() -> void:
@@ -232,6 +237,7 @@ func _reset_game() -> void:
 		board.append(row)
 	score = 0
 	combo_streak = 0
+	placement_note_index = 0
 	selected = -1
 	dragging = false
 	game_over = false
@@ -595,7 +601,8 @@ func _try_place(at: Vector2i) -> void:
 		row[target_x] = color_index
 		board[target_y] = row
 	score += shape.size() * 5
-	_play_sfx("place")
+	_play_sfx("place", placement_note_index)
+	placement_note_index = (placement_note_index + 1) % 12
 	pieces[selected]=[]
 	selected=-1
 	var cleared := _clear_lines()
