@@ -13,7 +13,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download and unpack original KayKit Dungeon Pack
+      - name: Download and stage only the original KayKit model and dependencies
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/kaykit-pack assets/kaykit
@@ -25,15 +26,38 @@ jobs:
           MODEL="$(find /tmp/kaykit-pack -type f -path '*/Assets/gltf/box_small.gltf' -print -quit)"
           if [ -z "$MODEL" ]; then
             echo "Original KayKit box_small.gltf was not found in the release archive."
-            find /tmp/kaykit-pack -type f -iname '*.gltf' | head -40
             exit 1
           fi
           ASSETS_DIR="${MODEL%/gltf/box_small.gltf}"
-          cp -a "$ASSETS_DIR/." assets/kaykit/
+          python3 - "$MODEL" "$ASSETS_DIR" <<'PY'
+          import json, pathlib, shutil, sys
+          model = pathlib.Path(sys.argv[1]).resolve()
+          root = pathlib.Path(sys.argv[2]).resolve()
+          destination = pathlib.Path("assets/kaykit").resolve()
+          doc = json.loads(model.read_text(encoding="utf-8"))
+          dependencies = {model}
+          for section in ("buffers", "images"):
+              for item in doc.get(section, []):
+                  uri = item.get("uri", "")
+                  if not uri or uri.startswith("data:"):
+                      continue
+                  source = (model.parent / uri).resolve()
+                  if not source.is_file():
+                      raise SystemExit(f"Missing KayKit dependency: {source}")
+                  dependencies.add(source)
+          for source in dependencies:
+              try:
+                  relative = source.relative_to(root)
+              except ValueError:
+                  raise SystemExit(f"KayKit dependency escapes asset root: {source}")
+              target = destination / relative
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(source, target)
+              print(f"Staged original asset: {relative}")
+          PY
           test -s assets/kaykit/gltf/box_small.gltf
           test -s assets/kaykit/gltf/box_small.bin
-          echo "Original KayKit GLTF and companion files installed:"
-          ls -lh assets/kaykit/gltf/box_small.gltf assets/kaykit/gltf/box_small.bin
+          echo "Original KayKit model staged without importing the entire 200+ model pack."
 
       - name: Install Java 17
         uses: actions/setup-java@v4
@@ -80,12 +104,12 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          godot --headless --editor --path . --quit 2>&1 | tee godot-validation.log
-          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-validation.log; then
+          xvfb-run -a godot --editor --path . --quit 2>&1 | tee godot-validation.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script" godot-validation.log; then
             echo "Refusing to export an APK with Godot script errors."
             exit 1
           fi
-          godot --headless --path . --quit-after 3 2>&1 | tee godot-runtime.log
+          xvfb-run -a godot --path . --quit-after 3 2>&1 | tee godot-runtime.log
           if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|ERROR:" godot-runtime.log; then
             echo "Refusing to export: main scene failed during startup."
             exit 1
