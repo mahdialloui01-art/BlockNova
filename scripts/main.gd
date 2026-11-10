@@ -36,7 +36,7 @@ var tray_y := 0.0
 var font: Font
 var sound_enabled := true
 var vibration_enabled := true
-var config := ConfigFile
+var config: ConfigFile
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
@@ -202,15 +202,18 @@ func _draw_ghost() -> void:
 		draw_rect(Rect2(p+Vector2(2,2),Vector2(cell-4,cell-4)),Color(color.r,color.g,color.b,0.42),true,5)
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
-	draw_rect(rect,color,true,radius)
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.set_corner_radius_all(roundi(radius))
+	draw_style_box(style,rect)
 
 func _draw_button(rect: Rect2,label: String,color: Color) -> void:
 	_draw_panel(rect,color,14)
 	_draw_text(label,Vector2(0,rect.position.y+rect.size.y*0.62),15,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,size.x)
 
 func _draw_block(rect: Rect2,color: Color) -> void:
-	draw_rect(rect,color,true,6)
-	draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),4)),Color(1,1,1,0.20),true,3)
+	_draw_panel(rect,color,6)
+	draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),4)),Color(1,1,1,0.20),true)
 
 func _draw_text(value: String,pos: Vector2,font_size: int,color: Color,align: HorizontalAlignment=HORIZONTAL_ALIGNMENT_LEFT,width: float=-1.0) -> void:
 	draw_string(font,pos,value,align,width if width>0 else 300.0,font_size,color)
