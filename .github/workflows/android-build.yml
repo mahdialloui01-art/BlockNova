@@ -126,7 +126,7 @@ jobs:
             exit 1
           fi
 
-      - name: Run deterministic 10x10 placement and scoring tests
+      - name: Run deterministic 8x8 placement and scoring tests
         shell: bash
         run: |
           set -o pipefail
