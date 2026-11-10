@@ -37,13 +37,14 @@ func _setup_3d_view() -> void:
     _viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _viewport_container.stretch = true
     _viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _viewport_container.z_index = 1
+    _viewport_container.z_index = -1
     add_child(_viewport_container)
 
     _viewport = SubViewport.new()
     _viewport.name = "KayKit3DViewport"
     _viewport.size = Vector2i(1080, 2160)
     _viewport.transparent_bg = true
+    _viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     _viewport_container.add_child(_viewport)
 
