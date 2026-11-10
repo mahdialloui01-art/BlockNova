@@ -44,6 +44,7 @@ func _ready() -> void:
  _load_best()
  _show_screen()
  _new_board()
+ _rebuild_3d()
 
 func _build_world() -> void:
  var env_node := WorldEnvironment.new()
