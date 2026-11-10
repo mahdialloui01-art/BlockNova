@@ -93,7 +93,7 @@ func _setup_3d_view() -> void:
 
 func _load_kaykit_box_mesh() -> Mesh:
     const MODEL_PATH := "res://assets/kaykit/gltf/box_small.gltf"
-    if not ResourceLoader.exists(MODEL_PATH):
+    if not FileAccess.file_exists(MODEL_PATH):
         push_error("Required original KayKit model is missing: " + MODEL_PATH)
         return null
     var packed_scene := load(MODEL_PATH) as PackedScene
