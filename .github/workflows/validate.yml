@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate:
-    name: Import, parse, and runtime smoke test
+    name: Import, parse, runtime, and game-rule tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -102,9 +102,20 @@ jobs:
             exit 1
           fi
 
+      - name: Run deterministic 10x10 placement and scoring tests
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script tests/test_grid_rules.gd --audio-driver Dummy 2>&1 | tee godot-rules-test.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|ERROR:" godot-rules-test.log; then
+            echo "Gameplay regression test failed."
+            exit 1
+          fi
+
       - name: Verify required project files
         run: |
           test -s project.godot
           test -s scenes/main.tscn
           test -s scripts/main.gd
           test -s scripts/main_3d.gd
+          test -s tests/test_grid_rules.gd
