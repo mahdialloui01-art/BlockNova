@@ -144,13 +144,13 @@ func _material_for(color: Color) -> StandardMaterial3D:
     _material_cache[key] = material
     return material
 
-func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name: String) -> void:
+func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name: String, lift: float = 0.0, vertical_scale: float = 1.0) -> void:
     var instance := MeshInstance3D.new()
     instance.name = node_name
     instance.mesh = _kaykit_mesh
     instance.material_override = _material_for(color)
-    instance.scale = Vector3.ONE * world_scale
-    instance.position = _screen_to_board_plane(at) + Vector3(0, 0.012, 0)
+    instance.scale = Vector3(world_scale, world_scale * vertical_scale, world_scale)
+    instance.position = _screen_to_board_plane(at) + Vector3(0, lift, 0)
     _models_root.add_child(instance)
 
 func _sync_3d_models() -> void:
@@ -183,59 +183,35 @@ func _sync_3d_models() -> void:
         return
 
     var block_world := cell * world_per_pixel * 0.91
-    var tile_mesh := BoxMesh.new()
-    tile_mesh.size = Vector3(block_world * 0.94, 0.18, block_world * 0.94)
-    var tile_material := StandardMaterial3D.new()
-    tile_material.albedo_color = Color("#253653")
-    tile_material.roughness = 0.88
+    var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
+    var base_tile_scale := block_world * 0.94
+    var tile_lift := -base_tile_scale * 0.085
 
+    # The complete 8x8 playfield is assembled from the imported KayKit cube mesh.
+    # Empty cells are shallow 3D tiles; occupied cells are full-height KayKit cubes.
     for y in range(GRID):
         for x in range(GRID):
             var center := board_origin + Vector2((float(x) + 0.5) * cell, (float(y) + 0.5) * cell)
-            var tile := MeshInstance3D.new()
-            tile.mesh = tile_mesh
-            tile.material_override = tile_material
-            tile.position = _screen_to_board_plane(center) + Vector3(0, -0.09, 0)
-            _models_root.add_child(tile)
+            _add_mesh_instance(center, base_tile_scale, Color("#253653"), "BoardTile3D_%d_%d" % [x, y], tile_lift, 0.16)
             var color_index := int(board[y][x])
             if color_index >= 0 and color_index < COLORS.size():
-                _add_mesh_instance(center, block_world, COLORS[color_index], "KayKitBlock_%d_%d" % [x, y])
+                _add_mesh_instance(center, block_world, COLORS[color_index], "KayKitBlock_%d_%d" % [x, y], block_world * 0.43)
 
-    var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
-    var plate := MeshInstance3D.new()
-    var plate_mesh := BoxMesh.new()
-    plate_mesh.size = Vector3(board_size * world_per_pixel + 0.18, 0.12, board_size * world_per_pixel + 0.18)
-    plate.mesh = plate_mesh
-    var plate_material := StandardMaterial3D.new()
-    plate_material.albedo_color = Color("#101B31")
-    plate_material.roughness = 0.82
-    plate.material_override = plate_material
-    plate.position = _screen_to_board_plane(board_center) + Vector3(0, -0.13, 0)
-    _models_root.add_child(plate)
-
-    # Raised 3D rim around the board: the playfield is a physical-looking tray,
-    # not a flat 2D grid painted over the background.
-    var rim_material := StandardMaterial3D.new()
-    rim_material.albedo_color = Color("#34496D")
-    rim_material.roughness = 0.62
-    var rim_height := 0.22
-    var rim_width := maxf(0.10, block_world * 0.10)
+    # Raised perimeter is also made from KayKit models, not primitive drawing/BoxMesh geometry.
+    var rim_color := Color("#34496D")
+    var rim_scale := block_world * 0.94
     var half_board := board_size * world_per_pixel * 0.5
-    var rim_y := -0.015
-    var rim_specs := [
-        [Vector3(board_size * world_per_pixel + rim_width * 2.0, rim_height, rim_width), Vector3(0, rim_y, -half_board - rim_width * 0.5)],
-        [Vector3(board_size * world_per_pixel + rim_width * 2.0, rim_height, rim_width), Vector3(0, rim_y, half_board + rim_width * 0.5)],
-        [Vector3(rim_width, rim_height, board_size * world_per_pixel), Vector3(-half_board - rim_width * 0.5, rim_y, 0)],
-        [Vector3(rim_width, rim_height, board_size * world_per_pixel), Vector3(half_board + rim_width * 0.5, rim_y, 0)]
-    ]
-    for spec in rim_specs:
-        var rim := MeshInstance3D.new()
-        var rim_mesh := BoxMesh.new()
-        rim_mesh.size = spec[0]
-        rim.mesh = rim_mesh
-        rim.material_override = rim_material
-        rim.position = _screen_to_board_plane(board_center) + spec[1]
-        _models_root.add_child(rim)
+    var rim_segments := GRID
+    for i in range(rim_segments):
+        var offset := (float(i) + 0.5) * cell - board_size * 0.5
+        var north := board_center + Vector2(offset, -board_size * 0.5 - cell * 0.04)
+        var south := board_center + Vector2(offset, board_size * 0.5 + cell * 0.04)
+        var west := board_center + Vector2(-board_size * 0.5 - cell * 0.04, offset)
+        var east := board_center + Vector2(board_size * 0.5 + cell * 0.04, offset)
+        _add_mesh_instance(north, rim_scale, rim_color, "KayKitRimN_%d" % i, 0.0, 0.28)
+        _add_mesh_instance(south, rim_scale, rim_color, "KayKitRimS_%d" % i, 0.0, 0.28)
+        _add_mesh_instance(west, rim_scale, rim_color, "KayKitRimW_%d" % i, 0.0, 0.28)
+        _add_mesh_instance(east, rim_scale, rim_color, "KayKitRimE_%d" % i, 0.0, 0.28)
 
     var w := size.x
     for i in range(3):
