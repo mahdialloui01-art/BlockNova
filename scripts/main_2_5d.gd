@@ -16,6 +16,9 @@ var _sync_pending := true
 var _last_signature := ""
 var _material_cache: Dictionary = {}
 
+func _enter_tree() -> void:
+    use_3d_visuals = true
+
 func _ready() -> void:
     super._ready()
     _setup_3d_view()
