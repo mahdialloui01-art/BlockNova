@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 8
+const GRID := 10
 const COLORS := [
 	Color("#48D7F2"), Color("#FFB84D"), Color("#A78BFA"),
 	Color("#62E6A5"), Color("#FF6F91"), Color("#F5E96B")
@@ -24,6 +24,7 @@ var board: Array = []
 var pieces: Array = []
 var piece_colors: Array = []
 var score := 0
+var combo_streak := 0
 var best := 0
 var selected := -1
 var dragging := false
@@ -77,6 +78,7 @@ func _reset_game() -> void:
 			row.append(-1)
 		board.append(row)
 	score = 0
+	combo_streak = 0
 	selected = -1
 	dragging = false
 	game_over = false
@@ -154,6 +156,8 @@ func _draw_game() -> void:
 	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#8EA2CA"))
 	_draw_text(str(score),Vector2(42,h*0.205),25,Color.WHITE)
 	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#FFD477"))
+	if combo_streak > 0:
+		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#48D7F2"))
 	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#26385B"))
 	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#8EA2CA"))
 	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#8EA2CA"),HORIZONTAL_ALIGNMENT_CENTER,w)
@@ -340,7 +344,12 @@ func _try_place(at: Vector2i) -> void:
 	score += shape.size() * 5
 	pieces[selected]=[]
 	selected=-1
-	_clear_lines()
+	var cleared := _clear_lines()
+	if cleared > 0:
+		combo_streak += 1
+		score += 75 * combo_streak
+	else:
+		combo_streak = 0
 	if score>best:
 		best=score
 		_save_settings()
@@ -352,12 +361,12 @@ func _try_place(at: Vector2i) -> void:
 		game_over=true
 	queue_redraw()
 
-func _clear_lines() -> void:
+func _clear_lines() -> int:
 	if board.size() != GRID:
-		return
+		return 0
 	for y in range(GRID):
 		if not (board[y] is Array) or board[y].size() != GRID:
-			return
+			return 0
 	var rows: Array[int]=[]
 	var cols: Array[int]=[]
 	for y in range(GRID):
@@ -387,6 +396,7 @@ func _clear_lines() -> void:
 		score+=cleared*cleared*100
 		if cleared>=2:
 			score+=cleared*75
+	return cleared
 
 func _any_move() -> bool:
 	if board.size() != GRID:
