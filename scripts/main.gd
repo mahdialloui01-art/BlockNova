@@ -1,9 +1,11 @@
 extends Control
 
 const GRID := 8
+# High-saturation warm palette: vivid coral, tangerine, golden yellow,
+# hot pink, scarlet and bright apricot. Keep each hue distinct on the dark board.
 const COLORS := [
-	Color("#48D7F2"), Color("#FFB84D"), Color("#A78BFA"),
-	Color("#62E6A5"), Color("#FF6F91"), Color("#F5E96B")
+	Color("#FF4B3E"), Color("#FF8500"), Color("#FFD21C"),
+	Color("#FF2F78"), Color("#F04438"), Color("#FFB02E")
 ]
 const SHAPES := [
 	[Vector2i(0,0)],
