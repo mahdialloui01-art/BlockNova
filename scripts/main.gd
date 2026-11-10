@@ -37,7 +37,6 @@ var font: Font
 var sound_enabled := true
 var vibration_enabled := true
 var config: ConfigFile
-var panel_style_cache: Dictionary = {}
 
 func _ready() -> void:
 	Input.set_use_accumulated_input(false)
@@ -207,25 +206,16 @@ func _draw_ghost() -> void:
 		draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),3)),Color(1,1,1,0.22),true)
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
-	# Reuse rounded panel styles instead of allocating hundreds every frame.
-	var key := "%s:%d" % [color.to_html(true), roundi(radius)]
-	var style: StyleBoxFlat
-	if panel_style_cache.has(key):
-		style = panel_style_cache[key]
-	else:
-		style = StyleBoxFlat.new()
-		style.bg_color = color
-		style.set_corner_radius_all(roundi(radius))
-		panel_style_cache[key] = style
-	draw_style_box(style,rect)
+	# Fast primitive fill avoids StyleBox allocation and cache-key work during drag.
+	draw_rect(rect,color,true)
 
 func _draw_button(rect: Rect2,label: String,color: Color) -> void:
 	_draw_panel(rect,color,14)
 	_draw_text(label,Vector2(0,rect.position.y+rect.size.y*0.62),15,Color.WHITE,HORIZONTAL_ALIGNMENT_CENTER,size.x)
 
 func _draw_block(rect: Rect2,color: Color) -> void:
-	_draw_panel(rect,color,6)
-	draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),4)),Color(1,1,1,0.20),true)
+	draw_rect(rect,color,true)
+	draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),3)),Color(1,1,1,0.20),true)
 
 func _draw_text(value: String,pos: Vector2,font_size: int,color: Color,align: HorizontalAlignment=HORIZONTAL_ALIGNMENT_LEFT,width: float=-1.0) -> void:
 	draw_string(font,pos,value,align,width if width>0 else 300.0,font_size,color)
