@@ -37,8 +37,10 @@ var font: Font
 var sound_enabled := true
 var vibration_enabled := true
 var config: ConfigFile
+var panel_style_cache: Dictionary = {}
 
 func _ready() -> void:
+	Input.set_use_accumulated_input(false)
 	font = ThemeDB.fallback_font
 	_load_settings()
 	_layout()
@@ -205,9 +207,16 @@ func _draw_ghost() -> void:
 		draw_rect(Rect2(rect.position+Vector2(3,2),Vector2(maxf(1,rect.size.x-6),3)),Color(1,1,1,0.22),true)
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(roundi(radius))
+	# Reuse rounded panel styles instead of allocating hundreds every frame.
+	var key := "%s:%d" % [color.to_html(true), roundi(radius)]
+	var style: StyleBoxFlat
+	if panel_style_cache.has(key):
+		style = panel_style_cache[key]
+	else:
+		style = StyleBoxFlat.new()
+		style.bg_color = color
+		style.set_corner_radius_all(roundi(radius))
+		panel_style_cache[key] = style
 	draw_style_box(style,rect)
 
 func _draw_button(rect: Rect2,label: String,color: Color) -> void:
@@ -284,7 +293,7 @@ func _pointer_down(pos: Vector2) -> void:
 			var center_y := tray_y+55
 			for i in range(3):
 				var center_x := w*(float(i)+0.5)/3.0
-				if pos.distance_to(Vector2(center_x,center_y)) < 65 and not pieces[i].is_empty():
+				if pos.distance_to(Vector2(center_x,center_y)) < 82 and not pieces[i].is_empty():
 					selected=i
 					dragging=true
 					queue_redraw()
