@@ -6,7 +6,7 @@ An original, mobile-first block puzzle game built with Godot 4.
 
 - Portrait-first interface designed for Android phones
 - Home screen with Play and Settings
-- 10×10 puzzle board and three shape choices
+- 8×8 puzzle board and three shape choices
 - Touch drag-and-drop placement with placement preview
 - Completed row and column clearing
 - Score, consecutive-clear combo streaks, and game-over flow
@@ -22,7 +22,7 @@ An original, mobile-first block puzzle game built with Godot 4.
 
 ## Automated validation
 
-GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes a deterministic 10×10 placement/row-column-clear/combo regression test on pushes and pull requests.
+GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes a deterministic 8×8 placement/row-column-clear/combo regression test on pushes and pull requests.
 
 ## Android status
 
@@ -30,7 +30,7 @@ The Android workflow now exports and signs a debug APK successfully on pushes. T
 
 ## Next development steps
 
-1. Install the latest Actions APK and verify touch placement, drag preview, 10×10 scaling, and 3D rendering on a phone.
+1. Install the latest Actions APK and verify touch placement, drag preview, 8×8 scaling, and 3D rendering on a phone.
 2. Add real audio effects, animation polish, and clearer placement feedback.
 3. Add progression, daily challenges, and expanded game modes.
 4. Profile rendering and memory use on lower-end Android devices.
