@@ -332,6 +332,13 @@ func _update_drag_preview(ghost_origin: Vector2i) -> void:
     var preview_color: Color = piece_colors[selected] if valid else Color("#FF536B")
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
     var block_world := cell * world_per_pixel * 0.78 * 0.90
+    # Keep the snapped placement target, but carry the preview continuously
+    # under the finger between cell centers (1:1 sub-cell movement).
+    var finger_cell_center := board_origin + Vector2(
+        (floori((pointer.x - board_origin.x) / cell) + 0.5) * cell,
+        (floori((pointer.y - board_origin.y) / cell) + 0.5) * cell
+    )
+    var finger_offset := pointer - finger_cell_center
     var found := 0
     for child in _models_root.get_children():
         if not child.name.begins_with("DragCube_") or not (child is MeshInstance3D):
@@ -343,7 +350,7 @@ func _update_drag_preview(ghost_origin: Vector2i) -> void:
         var cy := int(coordinates[1])
         var cube := child as MeshInstance3D
         var ghost_center := board_origin + Vector2((ghost_origin.x + cx + 0.5) * cell, (ghost_origin.y + cy + 0.5) * cell)
-        cube.position = _screen_to_board_plane(ghost_center)
+        cube.position = _screen_to_board_plane(ghost_center + finger_offset)
         cube.scale = Vector3(block_world, block_world, block_world)
         cube.material_override = _material_for(preview_color)
         found += 1
