@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 8
+const GRID := 10
 # Contemporary luminous palette: cyan, ultraviolet, magenta, amber, mint and coral.
 const COLORS := [
 	Color("#27DDF2"), Color("#8B6CFF"), Color("#FF62B5"),
