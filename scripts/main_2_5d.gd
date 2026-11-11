@@ -323,6 +323,33 @@ func _build_single_board_mesh() -> MeshInstance3D:
     _models_root.add_child(board_node)
     return board_node
 
+func _update_drag_preview(ghost_origin: Vector2i) -> void:
+    if _viewport == null or _models_root == null or selected < 0 or selected >= pieces.size():
+        return
+    if pieces[selected].is_empty():
+        return
+    var valid := _can_place(pieces[selected], ghost_origin)
+    var preview_color: Color = piece_colors[selected] if valid else Color("#FF536B")
+    var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
+    var block_world := cell * world_per_pixel * 0.78 * 0.90
+    var found := 0
+    for child in _models_root.get_children():
+        if not child.name.begins_with("DragCube_") or not (child is MeshInstance3D):
+            continue
+        var coordinates := child.name.trim_prefix("DragCube_").split("_")
+        if coordinates.size() != 2:
+            continue
+        var cx := int(coordinates[0])
+        var cy := int(coordinates[1])
+        var cube := child as MeshInstance3D
+        var ghost_center := board_origin + Vector2((ghost_origin.x + cx + 0.5) * cell, (ghost_origin.y + cy + 0.5) * cell)
+        cube.position = _screen_to_board_plane(ghost_center)
+        cube.scale = Vector3(block_world, block_world, block_world)
+        cube.material_override = _material_for(preview_color)
+        found += 1
+    if found > 0:
+        _viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
 func _sync_3d_models() -> void:
     if _viewport == null or _models_root == null:
         return
@@ -337,9 +364,13 @@ func _sync_3d_models() -> void:
     var visible_home := screen == Screen.HOME
     var visible_3d := visible_game or visible_home
     _viewport_container.visible = visible_3d
+    # Board/tray geometry is static during a drag. Keep it alive and move only
+    # the preview cubes; rebuilding every mesh on every touch event caused lag.
     var drag_cell := _cell_at(pointer) - drag_cell_offset if dragging else Vector2i(-999, -999)
-    var signature := str(screen, "|", board, "|", pieces, "|", piece_colors, "|", selected, "|", dragging, "|", drag_cell, "|", drag_cell_offset, "|", size)
+    var signature := str(screen, "|", board, "|", pieces, "|", piece_colors, "|", selected, "|", dragging, "|", drag_cell_offset, "|", size)
     if signature == _last_signature:
+        if dragging:
+            _update_drag_preview(drag_cell)
         return
     _last_signature = signature
     # A single frame is enough to refresh this static 3D scene after a state change.
