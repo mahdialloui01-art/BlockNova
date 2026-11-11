@@ -66,52 +66,93 @@ func _setup_audio() -> void:
 		_sfx_players[effect] = player
 	_music_player = AudioStreamPlayer.new()
 	_music_player.name = "ModernAmbientMusic"
-	_music_player.volume_db = -27.0
+	_music_player.volume_db = -24.0
 	_music_player.stream = _make_music_stream()
 	add_child(_music_player)
 	_update_music_state()
 
 func _make_music_stream() -> AudioStreamWAV:
-	# Original 8-second electronic lounge loop: warm synth pads, soft bass pulses,
-	# and a restrained four-note pluck pattern. No external copyrighted music.
+	# Original Modern Hybrid Cinematic score: a 12-second stereo loop with
+	# warm Dm9/Bbmaj7/Fadd9/Cadd9 pads, felt-piano plucks, sub-bass and glass air.
+	# Synthesized locally at 48 kHz; no external samples or third-party music.
 	const sample_rate := 48000
-	const duration := 8.0
-	var sample_count := int(sample_rate * duration)
+	const duration := 12.0
+	const bar_duration := 3.0
+	const sample_count := int(sample_rate * duration)
+	const crossfade_seconds := 0.36
+	const crossfade_frames := int(sample_rate * crossfade_seconds)
 	var progression := [
-		[146.83, 174.61, 220.00, 261.63],
-		[116.54, 146.83, 174.61, 220.00],
-		[174.61, 220.00, 261.63, 329.63],
-		[130.81, 164.81, 196.00, 246.94]
+		[146.83, 174.61, 220.00, 261.63, 329.63],
+		[116.54, 146.83, 174.61, 220.00, 261.63],
+		[174.61, 220.00, 261.63, 329.63, 392.00],
+		[130.81, 164.81, 196.00, 246.94, 293.66]
 	]
-	var samples := PackedFloat32Array()
-	samples.resize(sample_count)
+	var bass_roots := [73.42, 58.27, 87.31, 65.41]
+	var left := PackedFloat32Array()
+	var right := PackedFloat32Array()
+	left.resize(sample_count)
+	right.resize(sample_count)
 	for i in range(sample_count):
 		var t := float(i) / float(sample_rate)
-		var bar := mini(int(t / 2.0), 3)
-		var local_bar := fmod(t, 2.0)
+		var bar := posmod(int(t / bar_duration), 4)
+		var local_bar := fmod(t, bar_duration)
 		var chord: Array = progression[bar]
-		var pad := 0.0
-		for note in chord:
-			var frequency := float(note)
-			pad += sin(TAU * frequency * t) * 0.022
-			pad += sin(TAU * frequency * 2.0 * t) * 0.0045
-		var pad_envelope := minf(1.0, local_bar * 2.0) * minf(1.0, (2.0 - local_bar) * 4.0)
-		var beat_t := fmod(local_bar, 0.5)
-		var beat_index := mini(int(local_bar / 0.5), 3)
-		var bass := sin(TAU * 55.0 * beat_t) * exp(-10.0 * beat_t) * 0.075
+		var previous_chord: Array = progression[posmod(bar - 1, 4)]
+		var pad_current := 0.0
+		var pad_previous := 0.0
+		for note_index in range(chord.size()):
+			var frequency := float(chord[note_index])
+			pad_current += sin(TAU * frequency * t) * 0.014
+			pad_current += sin(TAU * frequency * 1.0017 * t + 0.17) * 0.008
+			pad_current += sin(TAU * frequency * 2.002 * t) * 0.0022
+			if local_bar < crossfade_seconds:
+				var previous_frequency := float(previous_chord[note_index])
+				pad_previous += sin(TAU * previous_frequency * t) * 0.014
+				pad_previous += sin(TAU * previous_frequency * 1.0017 * t + 0.17) * 0.008
+				pad_previous += sin(TAU * previous_frequency * 2.002 * t) * 0.0022
+		var chord_blend := smoothstep(0.0, crossfade_seconds, local_bar)
+		var breathing := 0.88 + 0.12 * sin(TAU * 0.055 * t)
+		var pad := lerpf(pad_previous, pad_current, chord_blend) * breathing
+		var bass_t := fmod(local_bar, 1.5)
+		var bass_frequency := float(bass_roots[bar])
+		var bass_envelope := exp(-3.8 * bass_t) * (1.0 - exp(-bass_t * 45.0))
+		var bass := sin(TAU * bass_frequency * bass_t) * bass_envelope * 0.105
+		var beat_t := fmod(local_bar, 0.75)
+		var beat_index := mini(int(local_bar / 0.75), 3)
 		var pluck := 0.0
-		if beat_t < 0.30:
+		if beat_t < 0.48:
 			var pluck_frequency := float(chord[beat_index]) * 2.0
-			pluck = (sin(TAU * pluck_frequency * beat_t) * 0.72 + sin(TAU * pluck_frequency * 2.01 * beat_t) * 0.18) * exp(-13.0 * beat_t) * 0.095
-		samples[i] = clampf(pad * pad_envelope + bass + pluck, -0.8, 0.8)
+			pluck = _piano_voice(pluck_frequency, beat_t, 0.16)
+			pluck += _modern_pluck(pluck_frequency * 1.5, beat_t, 0.13, 5.6)
+		# Slow stereo shimmer supplies width while leaving the bass firmly centered.
+		var motion := sin(TAU * 0.032 * t)
+		var air_phase := TAU * 1046.5 * t + 0.34 * sin(TAU * 0.071 * t)
+		var air := (sin(air_phase) + 0.42 * sin(air_phase * 1.498)) * 0.0065
+		var left_sample := pad * 0.82 + bass * 0.76 + pluck * (0.82 + motion * 0.12) + air * (0.78 + motion * 0.22)
+		var right_sample := pad * 0.82 + bass * 0.76 + pluck * (0.82 - motion * 0.12) + air * (0.78 - motion * 0.22)
+		# Gentle saturation rounds peaks without audible hard clipping.
+		left[i] = left_sample / (1.0 + absf(left_sample) * 0.72)
+		right[i] = right_sample / (1.0 + absf(right_sample) * 0.72)
+	# Equal-power-like overlap at the loop seam prevents a click on repeat.
+	for i in range(crossfade_frames):
+		var blend := float(i) / float(maxi(crossfade_frames - 1, 1))
+		var head_index := i
+		var tail_index := sample_count - crossfade_frames + i
+		var mixed_left := lerpf(left[tail_index], left[head_index], blend)
+		var mixed_right := lerpf(right[tail_index], right[head_index], blend)
+		left[head_index] = mixed_left
+		right[head_index] = mixed_right
+		left[tail_index] = mixed_left
+		right[tail_index] = mixed_right
 	var pcm := PackedByteArray()
-	pcm.resize(sample_count * 2)
+	pcm.resize(sample_count * 4)
 	for i in range(sample_count):
-		pcm.encode_s16(i * 2, int(round(samples[i] * 32767.0)))
+		pcm.encode_s16(i * 4, int(round(clampf(left[i], -1.0, 1.0) * 32767.0)))
+		pcm.encode_s16(i * 4 + 2, int(round(clampf(right[i], -1.0, 1.0) * 32767.0)))
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = sample_rate
-	stream.stereo = false
+	stream.stereo = true
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
 	stream.loop_end = sample_count
@@ -177,6 +218,13 @@ func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0)
 					sample += _modern_pluck(note_frequency * 1.5, local_t, 0.38, 5.8)
 					var shimmer_frequency := clampf(note_frequency * 5.02, 2500.0, 5900.0)
 					sample += sin(TAU * shimmer_frequency * local_t) * exp(-15.0 * local_t) * 0.045
+					if effect == "combo":
+						# A restrained sub impact gives multi-line clears cinematic weight.
+						var impact_frequency := lerpf(92.0, 48.0, minf(t / 0.28, 1.0))
+						sample += sin(TAU * impact_frequency * t) * exp(-8.5 * t) * 0.19
+					else:
+						# A bright upper harmonic makes a single clear feel crystalline.
+						sample += _modern_pluck(note_frequency * 2.0, local_t, 0.12, 4.2)
 			"error":
 				# Muted downward drop: 300 Hz to 100 Hz during the first 100 ms.
 				var drop_t := minf(t / 0.1, 1.0)
