@@ -30,6 +30,15 @@ func _process(_delta: float) -> void:
         _sync_pending = false
         _sync_3d_models()
 
+func _input(event: InputEvent) -> void:
+    # Process the touch event first so the base game updates pointer/selection,
+    # then move the existing 3D preview immediately in the same input event.
+    super._input(event)
+    if not dragging or screen != Screen.PLAYING or selected < 0 or selected >= pieces.size():
+        return
+    if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton or event is InputEventMouseMotion:
+        _update_drag_preview(_cell_at(pointer) - drag_cell_offset)
+
 func _setup_3d_view() -> void:
     _overlay_layer = CanvasLayer.new()
     _overlay_layer.name = "ThreeDRenderLayer"
