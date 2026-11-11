@@ -76,7 +76,7 @@ func _run_tests() -> void:
         return
 
     print("PASS: 10x10 board, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
-    game.queue_free()
+    game.free()
     quit(0)
 
 func _empty_board() -> Array:
