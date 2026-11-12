@@ -10,7 +10,6 @@ func _run_tests() -> void:
     var game := main_scene.instantiate() as Control
     if not _check(game != null and game.get_script().resource_path == "res://scripts/main_2_5d.gd", "Regression tests must instantiate the active 2.5D scene"):
         return
-    game.size = Vector2(1080, 2160)
     root.add_child(game)
     await process_frame
     if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
@@ -95,7 +94,7 @@ func _run_tests() -> void:
     if not _check(not game.call("_any_move"), "A completely full board must report no legal moves"):
         return
 
-    print("PASS: active 2.5D scene, 3D viewport/mesh, Android VIBRATE permission, haptic guard, 10x10 board, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
+    print("PASS: 10x10 active 2.5D scene, 3D viewport/mesh, Android VIBRATE permission, haptic guard, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
     game.free()
     quit(0)
 
