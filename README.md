@@ -26,7 +26,7 @@ The active scene is `res://scenes/main.tscn`, which uses `scripts/main_2_5d.gd` 
 
 ## Automated validation
 
-GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes deterministic regression checks against the actual 2.5D Android scene. The tests verify its 3D viewport and rounded block mesh, Android VIBRATE permission and safe haptic preference guard, plus 10×10 bounds, occupied cells, simultaneous row/column clearing, combo scoring, and no-move detection.
+GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes deterministic regression checks against the actual 2.5D Android scene. The tests verify its 3D viewport and rounded block mesh, Android VIBRATE permission and safe haptic preference guard, plus 10×10 bounds, occupied cells, simultaneous row/column clearing, combo scoring, and no-move detection. The Android build also inspects the exported manifest for VIBRATE and verifies the APK signature before uploading it.
 
 ## Android build status
 
