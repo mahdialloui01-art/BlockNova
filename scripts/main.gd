@@ -41,6 +41,9 @@ var font: Font
 var use_3d_visuals := false
 var sound_enabled := true
 var vibration_enabled := true
+var daily_mode := false
+var daily_date_key := ""
+var daily_best := 0
 var config: ConfigFile
 var home_ui: CanvasLayer
 var _sfx_players: Dictionary = {}
@@ -375,12 +378,36 @@ func _setup_home_ui() -> void:
 	home_ui.set("best_score", best)
 	home_ui.connect("play_requested", Callable(self, "_on_home_play"))
 	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
+	home_ui.connect("daily_challenge_requested", Callable(self, "_on_home_daily_challenge"))
 
 func _on_home_play() -> void:
 	_play_sfx("ui")
-	_reset_game()
+	daily_mode = false
+	daily_date_key = ""
+	daily_best = 0
+	_restart_current_mode()
 	if is_instance_valid(home_ui):
 		home_ui.call("set_ui_visible", false)
+
+func _on_home_daily_challenge() -> void:
+	_play_sfx("ui")
+	daily_mode = true
+	_restart_current_mode()
+	if is_instance_valid(home_ui):
+		home_ui.call("set_ui_visible", false)
+
+func _seed_daily_challenge() -> void:
+	var date := Time.get_date_dict_from_system()
+	daily_date_key = "%04d-%02d-%02d" % [int(date["year"]), int(date["month"]), int(date["day"])]
+	seed(int(date["year"]) * 10000 + int(date["month"]) * 100 + int(date["day"]))
+	daily_best = int(config.get_value("daily_records", daily_date_key, 0))
+
+func _restart_current_mode() -> void:
+	if daily_mode:
+		_seed_daily_challenge()
+	else:
+		randomize()
+	_reset_game()
 
 func _on_home_settings() -> void:
 	_play_sfx("ui")
@@ -491,11 +518,13 @@ func _draw_game() -> void:
 	var w := size.x
 	var h := size.y
 	_draw_text("BLOCK NOVA",Vector2(0,h*0.075),27,Color("#F3F6FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("DAILY CHALLENGE  •  "+daily_date_key if daily_mode else "PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_panel(Rect2(22,h*0.135,w-44,72),Color("#141F39"),18)
 	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#91A4C8"))
 	_draw_text(str(score),Vector2(42,h*0.205),25,Color("#F3F6FF"))
-	_draw_text("BEST  "+str(max(best,score)),Vector2(w-150,h*0.19),15,Color("#F5D77B"))
+	var visible_best := max(daily_best, score) if daily_mode else max(best, score)
+	var best_label := "DAY BEST  " if daily_mode else "BEST  "
+	_draw_text(best_label+str(visible_best),Vector2(w-190,h*0.19),15,Color("#F5D77B"))
 	if combo_streak > 0:
 		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#32E6D1"))
 	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#805BFF"))
@@ -660,7 +689,7 @@ func _pointer_down(pos: Vector2) -> void:
 			if game_over:
 				if pos.y >= h*0.52 and pos.y <= h*0.59:
 					_play_sfx("ui")
-					_reset_game()
+					_restart_current_mode()
 				elif pos.y >= h*0.59 and pos.y <= h*0.67:
 					_play_sfx("ui")
 					screen=Screen.HOME
@@ -789,6 +818,10 @@ func _try_place(at: Vector2i) -> void:
 		_save_settings()
 		if is_instance_valid(home_ui):
 			home_ui.call("set_best_score", best)
+	if daily_mode and not daily_date_key.is_empty() and score > daily_best:
+		daily_best = score
+		config.set_value("daily_records", daily_date_key, daily_best)
+		config.save("user://blocknova.cfg")
 	if _all_pieces_used():
 		_new_pieces()
 	elif not _any_move():

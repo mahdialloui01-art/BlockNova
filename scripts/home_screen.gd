@@ -2,6 +2,7 @@ extends CanvasLayer
 
 signal play_requested
 signal settings_requested
+signal daily_challenge_requested
 
 var best_score: int = 0
 var _best_label: Label
@@ -81,19 +82,28 @@ func _build() -> void:
 	play.pressed.connect(func(): play_requested.emit())
 	root.add_child(play)
 
+	var daily := _make_button("✦   DAILY CHALLENGE", Color("#35D6A5"), Color("#1A9275"), Color("#062A29"))
+	daily.name = "DailyChallengeButton"
+	daily.anchor_left = 0.11
+	daily.anchor_right = 0.89
+	daily.anchor_top = 0.79
+	daily.anchor_bottom = 0.845
+	daily.pressed.connect(func(): daily_challenge_requested.emit())
+	root.add_child(daily)
+
 	var settings := _make_button("⚙   SETTINGS", VIOLET, Color("#5840B4"), Color.WHITE)
 	settings.anchor_left = 0.11
 	settings.anchor_right = 0.89
-	settings.anchor_top = 0.80
-	settings.anchor_bottom = 0.85
+	settings.anchor_top = 0.855
+	settings.anchor_bottom = 0.91
 	settings.pressed.connect(func(): settings_requested.emit())
 	root.add_child(settings)
 
 	var best_panel := PanelContainer.new()
 	best_panel.anchor_left = 0.22
 	best_panel.anchor_right = 0.78
-	best_panel.anchor_top = 0.89
-	best_panel.anchor_bottom = 0.945
+	best_panel.anchor_top = 0.92
+	best_panel.anchor_bottom = 0.975
 	best_panel.add_theme_stylebox_override("panel", _panel_style(PANEL, Color("#344568"), 18, 1))
 	root.add_child(best_panel)
 

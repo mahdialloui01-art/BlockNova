@@ -17,7 +17,23 @@ func _run_tests() -> void:
     if not _check(game.get("_block_mesh") is Mesh, "The active scene must build its rounded 3D block mesh"):
         return
 
+    var home_ui := game.get("home_ui") as CanvasLayer
+    if not _check(home_ui != null and home_ui.has_signal("daily_challenge_requested"), "Home screen must expose the daily challenge action"):
+        return
+    home_ui.emit_signal("daily_challenge_requested")
+    if not _check(bool(game.get("daily_mode")), "Daily challenge action must start daily mode"):
+        return
+    var first_daily_pieces: Array = game.get("pieces").duplicate(true)
+    var first_daily_colors: Array = game.get("piece_colors").duplicate(true)
+    var daily_key := str(game.get("daily_date_key"))
+    if not _check(daily_key.split("-").size() == 3, "Daily challenge must use a local calendar date key"):
+        return
+    game.call("_seed_daily_challenge")
     game.call("_reset_game")
+    if not _check(game.get("pieces") == first_daily_pieces, "Daily challenge piece sequence must be deterministic for the same date"):
+        return
+    if not _check(game.get("piece_colors") == first_daily_colors, "Daily challenge colors must be deterministic for the same date"):
+        return
     # Exercise the haptic preference guard in CI; headless desktop runs must stay safe.
     game.set("vibration_enabled", false)
     game.call("_trigger_haptic", 24, 0.35)
@@ -70,6 +86,8 @@ func _run_tests() -> void:
         return
     if not _check(int(game.get("score")) == 630, "Two-line clear score must include placement, clear, and combo bonuses"):
         return
+    if not _check(int(game.get("daily_best")) >= 630, "Daily challenge best score must persist the current run"):
+        return
 
     # Occupied cells and malformed boards must never be accepted as legal moves.
     var occupied_board := _empty_board()
@@ -94,7 +112,7 @@ func _run_tests() -> void:
     if not _check(not game.call("_any_move"), "A completely full board must report no legal moves"):
         return
 
-    print("PASS: 10x10 active 2.5D scene, 3D viewport/mesh, Android VIBRATE permission, haptic guard, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
+    print("PASS: 10x10 daily challenge seed/record, active 2.5D scene, 3D viewport/mesh, Android VIBRATE permission, haptic guard, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
     game.free()
     quit(0)
 
