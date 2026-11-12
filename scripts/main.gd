@@ -522,7 +522,7 @@ func _draw_game() -> void:
 	_draw_panel(Rect2(22,h*0.135,w-44,72),Color("#141F39"),18)
 	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#91A4C8"))
 	_draw_text(str(score),Vector2(42,h*0.205),25,Color("#F3F6FF"))
-	var visible_best := max(daily_best, score) if daily_mode else max(best, score)
+	var visible_best: int = max(daily_best, score) if daily_mode else max(best, score)
 	var best_label := "DAY BEST  " if daily_mode else "BEST  "
 	_draw_text(best_label+str(visible_best),Vector2(w-190,h*0.19),15,Color("#F5D77B"))
 	if combo_streak > 0:
