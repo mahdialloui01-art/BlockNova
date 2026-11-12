@@ -332,6 +332,12 @@ func _play_sfx(effect: String, note_index: int = 0, combo_index: int = 0) -> voi
 		player.stream = _make_sfx_stream(effect, note_index, combo_index)
 	player.play()
 
+func _trigger_haptic(duration_ms: int, amplitude: float = 0.45) -> void:
+	# The vibration preference is user-controlled; desktop builds stay a safe no-op.
+	if not vibration_enabled or not OS.has_feature("mobile"):
+		return
+	Input.vibrate_handheld(clampi(duration_ms, 1, 250), clampf(amplitude, 0.0, 1.0))
+
 func _ready() -> void:
 	Input.set_use_accumulated_input(false)
 	font = ThemeDB.fallback_font
@@ -671,6 +677,7 @@ func _pointer_down(pos: Vector2) -> void:
 				if pos.distance_to(Vector2(center_x,center_y)) < 82 and not pieces[i].is_empty():
 					selected=i
 					_play_sfx("pickup")
+					_trigger_haptic(12, 0.24)
 					drag_cell_offset = _piece_cell_under_finger(i, pos)
 					dragging=true
 					queue_redraw()
@@ -742,6 +749,7 @@ func _try_place(at: Vector2i) -> void:
 	var shape: Array=pieces[selected]
 	if not _can_place(shape,at):
 		_play_sfx("error")
+		_trigger_haptic(20, 0.28)
 		return
 	# Validate the board before writing to avoid invalid Android grid access.
 	if board.size() != GRID:
@@ -769,23 +777,24 @@ func _try_place(at: Vector2i) -> void:
 	selected=-1
 	var cleared := _clear_lines()
 	if cleared > 0:
+		_trigger_haptic(64 if cleared >= 2 else 40, 0.58 if cleared >= 2 else 0.42)
 		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
 		combo_streak += 1
 		score += 75 * combo_streak
 	else:
 		combo_streak = 0
+		_trigger_haptic(22, 0.30)
 	if score>best:
 		best=score
 		_save_settings()
 		if is_instance_valid(home_ui):
 			home_ui.call("set_best_score", best)
-	# Temporarily disable Android haptics while isolating the placement crash.
-	# Keep board placement independent from device vibrator APIs.
 	if _all_pieces_used():
 		_new_pieces()
 	elif not _any_move():
 		game_over=true
 		_play_sfx("gameover")
+		_trigger_haptic(72, 0.56)
 	queue_redraw()
 
 func _clear_lines() -> int:

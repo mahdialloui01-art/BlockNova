@@ -4,13 +4,33 @@ func _initialize() -> void:
     call_deferred("_run_tests")
 
 func _run_tests() -> void:
-    var game := Control.new()
-    game.set_script(load("res://scripts/main.gd"))
+    var main_scene := load("res://scenes/main.tscn") as PackedScene
+    if not _check(main_scene != null, "The active Android scene must load"):
+        return
+    var game := main_scene.instantiate() as Control
+    if not _check(game != null and game.get_script().resource_path == "res://scripts/main_2_5d.gd", "Regression tests must instantiate the active 2.5D scene"):
+        return
     game.size = Vector2(1080, 2160)
     root.add_child(game)
     await process_frame
+    if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
+        return
+    if not _check(game.get("_block_mesh") is Mesh, "The active scene must build its rounded 3D block mesh"):
+        return
 
     game.call("_reset_game")
+    # Exercise the haptic preference guard in CI; headless desktop runs must stay safe.
+    game.set("vibration_enabled", false)
+    game.call("_trigger_haptic", 24, 0.35)
+    game.set("vibration_enabled", true)
+    game.call("_trigger_haptic", 24, 0.35)
+    var preset_file := FileAccess.open("res://export_presets.cfg", FileAccess.READ)
+    if not _check(preset_file != null, "Android export preset must be available to tests"):
+        return
+    var preset_text := preset_file.get_as_text()
+    preset_file.close()
+    if not _check(preset_text.contains("permissions/vibrate=true"), "Android export must declare the VIBRATE permission"):
+        return
     var initial_board: Array = game.get("board")
     if not _check(initial_board.size() == 10, "New game must create exactly 10 rows"):
         return
@@ -75,7 +95,7 @@ func _run_tests() -> void:
     if not _check(not game.call("_any_move"), "A completely full board must report no legal moves"):
         return
 
-    print("PASS: 10x10 board, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
+    print("PASS: active 2.5D scene, 3D viewport/mesh, Android VIBRATE permission, haptic guard, 10x10 board, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
     game.free()
     quit(0)
 
