@@ -89,6 +89,44 @@ func _run_tests() -> void:
     if not _check(int(game.get("daily_best")) >= 630, "Daily challenge best score must persist the current run"):
         return
 
+    if not _check(home_ui.has_signal("resume_requested"), "Home screen must expose a resume action"):
+        return
+    game.call("_save_session")
+    if not _check(bool(game.call("_has_saved_session")), "A valid active game must be saved for resume"):
+        return
+    var resume_button := home_ui.get_node_or_null("FullScreenHome/ResumeButton") as Button
+    if not _check(resume_button != null and resume_button.visible, "Saved game must reveal the home-screen resume button"):
+        return
+    var saved_score := int(game.get("score"))
+    var saved_board: Array = game.get("board").duplicate(true)
+    var saved_pieces: Array = game.get("pieces").duplicate(true)
+    var saved_rng := game.get("game_rng") as RandomNumberGenerator
+    var expected_rng := RandomNumberGenerator.new()
+    expected_rng.state = saved_rng.state
+    var expected_next_random := expected_rng.randi()
+    saved_rng.randi()
+    game.set("score", 0)
+    game.set("board", _empty_board())
+    if not _check(bool(game.call("_restore_saved_session")), "A valid saved game must restore successfully"):
+        return
+    if not _check(int(game.get("score")) == saved_score, "Resume must restore the score"):
+        return
+    if not _check(game.get("board") == saved_board, "Resume must restore all 100 board cells"):
+        return
+    if not _check(game.get("pieces") == saved_pieces, "Resume must restore the three tray pieces"):
+        return
+    var restored_rng := game.get("game_rng") as RandomNumberGenerator
+    if not _check(restored_rng.randi() == expected_next_random, "Resume must preserve the next deterministic piece RNG state"):
+        return
+    var saved_config := game.get("config") as ConfigFile
+    saved_config.set_value("session", "board", [[0]])
+    saved_config.save("user://blocknova.cfg")
+    if not _check(not bool(game.call("_restore_saved_session")), "Malformed saved sessions must be rejected safely"):
+        return
+    game.call("_clear_saved_session")
+    if not _check(not bool(game.call("_has_saved_session")) and not resume_button.visible, "Clearing a session must hide the resume action"):
+        return
+
     # Occupied cells and malformed boards must never be accepted as legal moves.
     var occupied_board := _empty_board()
     occupied_board[4][4] = 2
