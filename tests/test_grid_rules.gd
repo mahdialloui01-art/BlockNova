@@ -92,6 +92,10 @@ func _run_tests() -> void:
     if not _check(home_ui.has_signal("resume_requested"), "Home screen must expose a resume action"):
         return
     game.call("_save_session")
+    var disk_config := ConfigFile.new()
+    if not _check(disk_config.load("user://blocknova.cfg") == OK, "Saved game data must be readable after reopening the config file"):
+        return
+    game.set("config", disk_config)
     if not _check(bool(game.call("_has_saved_session")), "A valid active game must be saved for resume"):
         return
     var resume_button := home_ui.get_node_or_null("FullScreenHome/ResumeButton") as Button
@@ -150,7 +154,7 @@ func _run_tests() -> void:
     if not _check(not game.call("_any_move"), "A completely full board must report no legal moves"):
         return
 
-    print("PASS: 10x10 daily challenge seed/record, active 2.5D scene, 3D viewport/mesh, Android VIBRATE permission, haptic guard, edge bounds, occupied-cell rejection, simultaneous row/column clear, combo x1, score 630, no-move detection")
+    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, simultaneous line clear, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     game.free()
     quit(0)
 
