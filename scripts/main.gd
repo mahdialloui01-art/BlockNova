@@ -45,6 +45,7 @@ var daily_mode := false
 var daily_date_key := ""
 var daily_best := 0
 var config: ConfigFile
+var game_rng := RandomNumberGenerator.new()
 var home_ui: CanvasLayer
 var _sfx_players: Dictionary = {}
 var _music_player: AudioStreamPlayer
@@ -379,9 +380,12 @@ func _setup_home_ui() -> void:
 	home_ui.connect("play_requested", Callable(self, "_on_home_play"))
 	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
 	home_ui.connect("daily_challenge_requested", Callable(self, "_on_home_daily_challenge"))
+	home_ui.connect("resume_requested", Callable(self, "_on_home_resume"))
+	home_ui.call("set_resume_available", _has_saved_session())
 
 func _on_home_play() -> void:
 	_play_sfx("ui")
+	_clear_saved_session()
 	daily_mode = false
 	daily_date_key = ""
 	daily_best = 0
@@ -391,6 +395,7 @@ func _on_home_play() -> void:
 
 func _on_home_daily_challenge() -> void:
 	_play_sfx("ui")
+	_clear_saved_session()
 	daily_mode = true
 	_restart_current_mode()
 	if is_instance_valid(home_ui):
@@ -399,14 +404,14 @@ func _on_home_daily_challenge() -> void:
 func _seed_daily_challenge() -> void:
 	var date := Time.get_date_dict_from_system()
 	daily_date_key = "%04d-%02d-%02d" % [int(date["year"]), int(date["month"]), int(date["day"])]
-	seed(int(date["year"]) * 10000 + int(date["month"]) * 100 + int(date["day"]))
+	game_rng.seed = int(date["year"]) * 10000 + int(date["month"]) * 100 + int(date["day"])
 	daily_best = int(config.get_value("daily_records", daily_date_key, 0))
 
 func _restart_current_mode() -> void:
 	if daily_mode:
 		_seed_daily_challenge()
 	else:
-		randomize()
+		game_rng.randomize()
 	_reset_game()
 
 func _on_home_settings() -> void:
@@ -421,6 +426,135 @@ func _save_settings() -> void:
 	config.set_value("settings", "sound", sound_enabled)
 	config.set_value("settings", "vibration", vibration_enabled)
 	config.save("user://blocknova.cfg")
+
+func _current_date_key() -> String:
+	var date := Time.get_date_dict_from_system()
+	return "%04d-%02d-%02d" % [int(date["year"]), int(date["month"]), int(date["day"])]
+
+func _has_saved_session() -> bool:
+	return config != null and bool(config.get_value("session", "available", false))
+
+func _clear_saved_session() -> void:
+	if config == null:
+		return
+	config.set_value("session", "available", false)
+	config.save("user://blocknova.cfg")
+	if is_instance_valid(home_ui):
+		home_ui.call("set_resume_available", false)
+
+func _valid_saved_board(value: Variant) -> bool:
+	if not (value is Array) or value.size() != GRID:
+		return false
+	for row in value:
+		if not (row is Array) or row.size() != GRID:
+			return false
+		for cell_value in row:
+			if not (cell_value is int) or int(cell_value) < -1 or int(cell_value) >= COLORS.size():
+				return false
+	return true
+
+func _valid_saved_pieces(value: Variant) -> bool:
+	if not (value is Array) or value.size() != 3:
+		return false
+	for shape in value:
+		if not (shape is Array):
+			return false
+		for coordinate in shape:
+			if not (coordinate is Vector2i):
+				return false
+			if coordinate.x < 0 or coordinate.y < 0 or coordinate.x >= 4 or coordinate.y >= 4:
+				return false
+	return true
+
+func _save_session() -> void:
+	if config == null:
+		return
+	if game_over:
+		_clear_saved_session()
+		return
+	if screen != Screen.PLAYING and screen != Screen.PAUSED:
+		return
+	if not _valid_saved_board(board) or not _valid_saved_pieces(pieces) or piece_colors.size() != 3:
+		return
+	var saved_colors: Array[String] = []
+	for color in piece_colors:
+		if not (color is Color):
+			return
+		saved_colors.append(color.to_html(true))
+	config.set_value("session", "available", true)
+	config.set_value("session", "version", 1)
+	config.set_value("session", "board", board.duplicate(true))
+	config.set_value("session", "pieces", pieces.duplicate(true))
+	config.set_value("session", "piece_colors", saved_colors)
+	config.set_value("session", "score", score)
+	config.set_value("session", "combo_streak", combo_streak)
+	config.set_value("session", "daily_mode", daily_mode)
+	config.set_value("session", "daily_date_key", daily_date_key)
+	config.set_value("session", "daily_best", daily_best)
+	config.set_value("session", "rng_state", game_rng.state)
+	config.set_value("session", "placement_note_index", placement_note_index)
+	config.save("user://blocknova.cfg")
+	if is_instance_valid(home_ui):
+		home_ui.call("set_resume_available", true)
+
+func _restore_saved_session() -> bool:
+	if not _has_saved_session() or int(config.get_value("session", "version", 0)) != 1:
+		return false
+	var saved_board: Variant = config.get_value("session", "board", [])
+	var saved_pieces: Variant = config.get_value("session", "pieces", [])
+	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
+	if not _valid_saved_board(saved_board) or not _valid_saved_pieces(saved_pieces):
+		return false
+	if not (saved_colors is Array) or saved_colors.size() != 3:
+		return false
+	var restored_colors: Array[Color] = []
+	for color_text in saved_colors:
+		if not (color_text is String) or color_text.is_empty():
+			return false
+		restored_colors.append(Color.from_string("#" + color_text.trim_prefix("#"), Color.WHITE))
+	var restored_daily_mode := bool(config.get_value("session", "daily_mode", false))
+	var restored_date := str(config.get_value("session", "daily_date_key", ""))
+	if restored_daily_mode and restored_date != _current_date_key():
+		return false
+	var restored_rng_state: Variant = config.get_value("session", "rng_state", null)
+	if not (restored_rng_state is int):
+		return false
+	board = saved_board.duplicate(true)
+	pieces = saved_pieces.duplicate(true)
+	piece_colors = restored_colors
+	score = maxi(0, int(config.get_value("session", "score", 0)))
+	combo_streak = maxi(0, int(config.get_value("session", "combo_streak", 0)))
+	daily_mode = restored_daily_mode
+	daily_date_key = restored_date
+	daily_best = maxi(0, int(config.get_value("session", "daily_best", 0)))
+	if daily_mode:
+		daily_best = maxi(daily_best, int(config.get_value("daily_records", daily_date_key, 0)))
+	game_rng.state = int(restored_rng_state)
+	placement_note_index = posmod(int(config.get_value("session", "placement_note_index", 0)), 12)
+	selected = -1
+	dragging = false
+	drag_cell_offset = Vector2i.ZERO
+	game_over = false
+	screen = Screen.PLAYING
+	best = maxi(best, score)
+	if is_instance_valid(home_ui):
+		home_ui.call("set_best_score", best)
+		home_ui.call("set_resume_available", true)
+	_update_music_state()
+	queue_redraw()
+	return true
+
+func _on_home_resume() -> void:
+	_play_sfx("ui")
+	if not _restore_saved_session():
+		_clear_saved_session()
+		return
+	if is_instance_valid(home_ui):
+		home_ui.call("set_ui_visible", false)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+		_save_session()
 
 func _layout() -> void:
 	var w := size.x
@@ -451,8 +585,8 @@ func _new_pieces() -> void:
 	pieces.clear()
 	piece_colors.clear()
 	for i in range(3):
-		pieces.append(SHAPES[randi_range(0, SHAPES.size() - 1)].duplicate())
-		piece_colors.append(COLORS[randi_range(0, COLORS.size() - 1)])
+		pieces.append(SHAPES[game_rng.randi_range(0, SHAPES.size() - 1)].duplicate())
+		piece_colors.append(COLORS[game_rng.randi_range(0, COLORS.size() - 1)])
 	if not _any_move():
 		game_over = true
 		_play_sfx("gameover")
@@ -681,6 +815,7 @@ func _pointer_down(pos: Vector2) -> void:
 				screen=Screen.PLAYING
 			elif pos.y >= h*0.59 and pos.y <= h*0.67:
 				_play_sfx("ui")
+				_save_session()
 				screen=Screen.HOME
 				selected=-1
 			queue_redraw()
@@ -692,12 +827,14 @@ func _pointer_down(pos: Vector2) -> void:
 					_restart_current_mode()
 				elif pos.y >= h*0.59 and pos.y <= h*0.67:
 					_play_sfx("ui")
+					_clear_saved_session()
 					screen=Screen.HOME
 				queue_redraw()
 				return
 			if pos.x >= w-78 and pos.y < 70:
 				_play_sfx("ui")
 				screen=Screen.PAUSED
+				_save_session()
 				queue_redraw()
 				return
 			var center_y := tray_y+55
@@ -828,6 +965,10 @@ func _try_place(at: Vector2i) -> void:
 		game_over=true
 		_play_sfx("gameover")
 		_trigger_haptic(72, 0.56)
+	if game_over:
+		_clear_saved_session()
+	else:
+		_save_session()
 	queue_redraw()
 
 func _clear_lines() -> int:
