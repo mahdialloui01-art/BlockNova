@@ -3,10 +3,16 @@ extends CanvasLayer
 signal play_requested
 signal settings_requested
 signal daily_challenge_requested
+signal resume_requested
 
 var best_score: int = 0
 var _best_label: Label
 var _root_control: Control
+var _resume_button: Button
+var _play_button: Button
+var _daily_button: Button
+var _settings_button: Button
+var _best_panel: PanelContainer
 
 const INK := Color("#F3F6FF")
 const MUTED := Color("#A9B5D2")
@@ -74,6 +80,12 @@ func _build() -> void:
 	feature.anchor_bottom = 0.695
 	root.add_child(feature)
 
+	var resume := _make_button("↻   RESUME LAST GAME", Color("#FFC857"), Color("#B78328"), Color("#241A05"))
+	resume.name = "ResumeButton"
+	resume.pressed.connect(func(): resume_requested.emit())
+	root.add_child(resume)
+	_resume_button = resume
+
 	var play := _make_button("▶   PLAY NOW", CYAN, Color("#138FAE"), Color("#071B30"))
 	play.anchor_left = 0.11
 	play.anchor_right = 0.89
@@ -81,6 +93,7 @@ func _build() -> void:
 	play.anchor_bottom = 0.785
 	play.pressed.connect(func(): play_requested.emit())
 	root.add_child(play)
+	_play_button = play
 
 	var daily := _make_button("✦   DAILY CHALLENGE", Color("#35D6A5"), Color("#1A9275"), Color("#062A29"))
 	daily.name = "DailyChallengeButton"
@@ -90,6 +103,7 @@ func _build() -> void:
 	daily.anchor_bottom = 0.845
 	daily.pressed.connect(func(): daily_challenge_requested.emit())
 	root.add_child(daily)
+	_daily_button = daily
 
 	var settings := _make_button("⚙   SETTINGS", VIOLET, Color("#5840B4"), Color.WHITE)
 	settings.anchor_left = 0.11
@@ -98,6 +112,7 @@ func _build() -> void:
 	settings.anchor_bottom = 0.91
 	settings.pressed.connect(func(): settings_requested.emit())
 	root.add_child(settings)
+	_settings_button = settings
 
 	var best_panel := PanelContainer.new()
 	best_panel.anchor_left = 0.22
@@ -114,6 +129,38 @@ func _build() -> void:
 	_best_label.add_theme_font_size_override("font_size", 14)
 	_best_label.add_theme_color_override("font_color", Color("#F5D77B"))
 	best_panel.add_child(_best_label)
+	_best_panel = best_panel
+	_layout_action_buttons()
+
+func _layout_action_buttons() -> void:
+	if not is_instance_valid(_play_button) or not is_instance_valid(_best_panel):
+		return
+	var has_resume := is_instance_valid(_resume_button) and _resume_button.visible
+	if has_resume:
+		_resume_button.anchor_top = 0.700
+		_resume_button.anchor_bottom = 0.750
+		_play_button.anchor_top = 0.755
+		_play_button.anchor_bottom = 0.810
+		_daily_button.anchor_top = 0.815
+		_daily_button.anchor_bottom = 0.870
+		_settings_button.anchor_top = 0.875
+		_settings_button.anchor_bottom = 0.930
+		_best_panel.anchor_top = 0.935
+		_best_panel.anchor_bottom = 0.985
+	else:
+		_play_button.anchor_top = 0.725
+		_play_button.anchor_bottom = 0.785
+		_daily_button.anchor_top = 0.790
+		_daily_button.anchor_bottom = 0.845
+		_settings_button.anchor_top = 0.855
+		_settings_button.anchor_bottom = 0.910
+		_best_panel.anchor_top = 0.920
+		_best_panel.anchor_bottom = 0.975
+
+func set_resume_available(value: bool) -> void:
+	if is_instance_valid(_resume_button):
+		_resume_button.visible = value
+		_layout_action_buttons()
 
 func _make_button(caption: String, fill: Color, border: Color, text_color: Color) -> Button:
 	var button := Button.new()
