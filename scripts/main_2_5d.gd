@@ -447,20 +447,20 @@ func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[
     # several rows and columns clear together. The board clears immediately;
     # a small, evenly distributed set of flashes keeps the feedback vivid
     # without a frame hitch on mid-range Android devices.
-    var flash_count := mini(cleared_cells.size(), 6)
+    var flash_count := cleared_cells.size()
     var clear_asset_parent: MeshInstance3D = null
     for i in range(flash_count):
         var sample_index := int(round(float(i) * float(cleared_cells.size() - 1) / float(maxi(1, flash_count - 1))))
         var coordinate: Vector2i = cleared_cells[sample_index]
         var cleared_color_index := int(_last_cleared_colors.get(coordinate, placed_color_index))
         var cleared_color: Color = COLORS[clampi(cleared_color_index, 0, COLORS.size() - 1)]
-        var tile_effect := _spawn_tile_effect(coordinate, cleared_color, true)
+        var tile_effect := _spawn_tile_effect(coordinate, cleared_color, true, clear_asset_parent == null)
         if clear_asset_parent == null:
             clear_asset_parent = tile_effect
     if clear_asset_parent != null:
         _spawn_asset_vfx(clear_asset_parent, 0.30)
 
-func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> MeshInstance3D:
+func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool, include_debris: bool = true) -> MeshInstance3D:
     if _effects_root == null or _viewport == null or _block_mesh == null:
         return
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
@@ -488,7 +488,8 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> M
     _active_visual_effects += 1
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     if is_clear:
-        _spawn_clear_debris(center, color, block_world, effect)
+        if include_debris:
+            _spawn_clear_debris(center, color, block_world, effect)
     else:
         _spawn_placement_ripple(center, color)
     var tween := create_tween()
