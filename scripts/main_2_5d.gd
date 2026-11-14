@@ -30,22 +30,14 @@ func _draw() -> void:
     super._draw()
     _sync_pending = true
 
-func _process(delta: float) -> void:
-    # Smoothly recolor the physical 8x8 board toward the most common tile hue.
-    _theme_target = _dominant_board_color()
-    var blend := 1.0 - exp(-delta * 2.6)
-    var next_color := _theme_color.lerp(_theme_target, blend)
-    var color_delta := maxf(maxf(absf(_theme_color.r - next_color.r), absf(_theme_color.g - next_color.g)), maxf(absf(_theme_color.b - next_color.b), absf(_theme_color.a - next_color.a)))
-    if color_delta > 0.0015:
-        _theme_color = next_color
-        _update_board_theme()
-        if _viewport != null:
-            _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-    elif _viewport != null and _active_visual_effects == 0:
-        _viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+func _process(_delta: float) -> void:
+    # The reference board uses a stable cocoa-brown finish; only tile materials
+    # carry color. Avoid needless continuous redraws on mobile devices.
     if _sync_pending:
         _sync_pending = false
         _sync_3d_models()
+    if _active_visual_effects == 0 and _viewport != null:
+        _viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 func _input(event: InputEvent) -> void:
     # Process the touch event first so the base game updates pointer/selection,
