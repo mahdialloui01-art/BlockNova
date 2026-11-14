@@ -460,6 +460,8 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
     _effects_root.add_child(effect)
     _active_visual_effects += 1
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    if not is_clear:
+        _spawn_placement_ripple(center, color, block_world)
     var tween := create_tween()
     if is_clear:
         var material := effect.material_override as StandardMaterial3D
@@ -476,6 +478,44 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
         tween.tween_property(effect, "scale", target_scale, 0.08)
         tween.tween_callback(effect.queue_free)
     tween.finished.connect(_on_visual_effect_finished)
+
+func _spawn_placement_ripple(screen_center: Vector2, color: Color, block_world: float) -> void:
+    # A bright expanding ring gives every newly placed cube a clear impact cue.
+    # The ring is a real 3D mesh, so it stays aligned with the recessed board.
+    if _effects_root == null or _viewport == null:
+        return
+    var ring := MeshInstance3D.new()
+    ring.name = "PlacementEnergyRipple"
+    var torus := TorusMesh.new()
+    torus.inner_radius = 0.085
+    torus.outer_radius = 0.11
+    torus.rings = 32
+    torus.ring_segments = 8
+    ring.mesh = torus
+    var glow := StandardMaterial3D.new()
+    glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    glow.albedo_color = Color(color.r, color.g, color.b, 0.92)
+    glow.emission_enabled = true
+    glow.emission = color.lightened(0.35)
+    glow.emission_energy_multiplier = 2.2
+    glow.no_depth_test = true
+    ring.material_override = glow
+    ring.position = _screen_to_board_plane(screen_center) + Vector3(0, 0.115, 0)
+    ring.scale = Vector3.ONE * 0.28
+    ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    _effects_root.add_child(ring)
+    _active_visual_effects += 1
+    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    var ripple_tween := create_tween()
+    ripple_tween.set_parallel(true)
+    ripple_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    ripple_tween.tween_property(ring, "scale", Vector3.ONE * 7.0, 0.34)
+    ripple_tween.tween_property(glow, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.34)
+    ripple_tween.tween_property(glow, "emission_energy_multiplier", 0.0, 0.34)
+    ripple_tween.chain().tween_callback(ring.queue_free)
+    ripple_tween.finished.connect(_on_visual_effect_finished)
+
 
 func _on_visual_effect_finished() -> void:
     _active_visual_effects = maxi(0, _active_visual_effects - 1)
