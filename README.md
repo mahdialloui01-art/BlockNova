@@ -18,7 +18,7 @@ An original, mobile-first block puzzle game built with Godot 4.4.1. BlockNova ha
 - Deterministic daily challenge: the same local-date seed and piece/color sequence for every replay, with a date-specific best score
 - Persistent best score, sound/settings preferences, and an in-progress game session in Godot's `user://` storage
 - A conditional **Resume Last Game** home-screen action that restores the 8×8 board, tray pieces, score, combo, daily-mode date/record, and the dedicated random-number-generator state
-- Automatic migration of older saved 8×8 sessions into the center of the 8×8 board, preserving their placed blocks
+- Automatic migration of older 10×10 sessions by preserving their central 8×8 area
 
 The active scene is `res://scenes/main.tscn`, which uses `scripts/main_2_5d.gd` and the shared rules in `scripts/main.gd`. The separate `scripts/main_3d.gd` prototype is kept aligned to the same 8×8 board size.
 
