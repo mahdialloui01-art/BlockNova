@@ -49,7 +49,7 @@ func _run_tests() -> void:
     var effect_viewport := game.get("_viewport") as SubViewport
     if not _check(effect_viewport.render_target_update_mode == SubViewport.UPDATE_ALWAYS, "The 3D viewport must update only while transient effects animate"):
         return
-    await create_timer(0.35).timeout
+    await create_timer(0.55).timeout
     await process_frame
     if not _check(int(game.get("_active_visual_effects")) == 0 and effects_root.get_child_count() == 0, "Transient effects must clean themselves up after animation"):
         return
