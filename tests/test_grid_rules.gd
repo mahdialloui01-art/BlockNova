@@ -259,7 +259,7 @@ func _run_tests() -> void:
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
         return
 
-    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     game.free()
     quit(0)
 
