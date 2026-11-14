@@ -87,7 +87,7 @@ script = ExtResource("fx")
 [node name="Glow" type="CPUParticles3D" parent="."]
 emitting = false
 amount = 1
-lifetime = 0.35
+lifetime = 0.28
 one_shot = true
 preprocess = 0.016666666666666666
 explosiveness = 1.0
@@ -98,7 +98,7 @@ gravity = Vector3(0, 0, 0)
 [node name="Ring" type="CPUParticles3D" parent="."]
 emitting = false
 amount = 1
-lifetime = 0.55
+lifetime = 0.30
 one_shot = true
 preprocess = 0.016666666666666666
 explosiveness = 1.0
@@ -109,7 +109,7 @@ gravity = Vector3(0, 0, 0)
 [node name="Plasma" type="CPUParticles3D" parent="."]
 emitting = false
 amount = 1
-lifetime = 0.42
+lifetime = 0.30
 one_shot = true
 preprocess = 0.016666666666666666
 explosiveness = 1.0
@@ -121,7 +121,7 @@ angle_max = 360.0
 [node name="Arcs" type="CPUParticles3D" parent="."]
 emitting = false
 amount = 1
-lifetime = 0.4
+lifetime = 0.30
 one_shot = true
 preprocess = 0.016666666666666666
 explosiveness = 1.0
@@ -153,7 +153,7 @@ scale_amount_max = 1.2
 [node name="Motes" type="CPUParticles3D" parent="."]
 emitting = false
 amount = 16
-lifetime = 0.7
+lifetime = 0.30
 one_shot = true
 preprocess = 0.016666666666666666
 explosiveness = 1.0

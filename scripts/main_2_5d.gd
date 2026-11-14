@@ -434,27 +434,33 @@ func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[
     if _effects_root == null or _block_mesh == null or _viewport == null:
         return
     var placed_color: Color = COLORS[clampi(placed_color_index, 0, COLORS.size() - 1)]
+    var placement_asset_parent: MeshInstance3D = null
     for coordinate in placed_cells:
         if cleared_cells.has(coordinate):
             continue
-        _spawn_tile_effect(coordinate, placed_color, false)
-    if not placed_cells.is_empty():
-        _spawn_asset_vfx(_average_cell_center(placed_cells), 0.34)
+        var tile_effect := _spawn_tile_effect(coordinate, placed_color, false)
+        if placement_asset_parent == null:
+            placement_asset_parent = tile_effect
+    if placement_asset_parent != null:
+        _spawn_asset_vfx(placement_asset_parent, 0.68)
     # Avoid a burst of dozens of independent 3D nodes/tweens when
     # several rows and columns clear together. The board clears immediately;
     # a small, evenly distributed set of flashes keeps the feedback vivid
     # without a frame hitch on mid-range Android devices.
     var flash_count := mini(cleared_cells.size(), 6)
+    var clear_asset_parent: MeshInstance3D = null
     for i in range(flash_count):
         var sample_index := int(round(float(i) * float(cleared_cells.size() - 1) / float(maxi(1, flash_count - 1))))
         var coordinate: Vector2i = cleared_cells[sample_index]
         var cleared_color_index := int(_last_cleared_colors.get(coordinate, placed_color_index))
         var cleared_color: Color = COLORS[clampi(cleared_color_index, 0, COLORS.size() - 1)]
-        _spawn_tile_effect(coordinate, cleared_color, true)
-    if not cleared_cells.is_empty():
-        _spawn_asset_vfx(_average_cell_center(cleared_cells), 0.48)
+        var tile_effect := _spawn_tile_effect(coordinate, cleared_color, true)
+        if clear_asset_parent == null:
+            clear_asset_parent = tile_effect
+    if clear_asset_parent != null:
+        _spawn_asset_vfx(clear_asset_parent, 0.30)
 
-func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> void:
+func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> MeshInstance3D:
     if _effects_root == null or _viewport == null or _block_mesh == null:
         return
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
@@ -491,14 +497,19 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
         tween.tween_property(effect, "scale", target_scale * 1.28, 0.36)
         tween.tween_property(material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.36)
         tween.tween_property(material, "emission_energy_multiplier", 0.0, 0.36)
-        tween.chain().tween_callback(effect.queue_free)
+        tween.chain().tween_interval(0.16)
+        tween.tween_callback(effect.queue_free)
     else:
+        var pop_material := effect.material_override as StandardMaterial3D
         tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
         tween.tween_property(effect, "scale", target_scale * 1.10, 0.12)
         tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
         tween.tween_property(effect, "scale", target_scale, 0.08)
+        tween.tween_property(pop_material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.08)
+        tween.tween_interval(0.24)
         tween.tween_callback(effect.queue_free)
     tween.finished.connect(_on_visual_effect_finished)
+    return effect
 
 
 func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: float, effect_parent: Node3D) -> void:
@@ -534,27 +545,16 @@ func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: floa
 
 
 
-func _average_cell_center(coordinates: Array[Vector2i]) -> Vector2:
-    var average := Vector2.ZERO
-    for coordinate in coordinates:
-        average += Vector2(coordinate.x, coordinate.y)
-    average /= float(maxi(1, coordinates.size()))
-    return board_origin + Vector2((average.x + 0.5) * cell, (average.y + 0.5) * cell)
-
-
-func _spawn_asset_vfx(screen_center: Vector2, effect_scale: float) -> void:
-    if _effects_root == null or _viewport == null:
+func _spawn_asset_vfx(effect_parent: Node3D, effect_scale: float) -> void:
+    if effect_parent == null or not is_instance_valid(effect_parent):
         return
     var effect := ENERGY_HIT_VFX.instantiate() as Node3D
     if effect == null:
         return
     effect.name = "LicensedEnergyHitVFX"
-    effect.position = _screen_to_board_plane(screen_center) + Vector3(0, 0.24, 0)
+    effect.position = Vector3(0, 0.24, 0)
     effect.scale = Vector3.ONE * effect_scale
-    effect.tree_exited.connect(_on_visual_effect_finished)
-    _effects_root.add_child(effect)
-    _active_visual_effects += 1
-    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    effect_parent.add_child(effect)
 
 
 func _on_combo_triggered(level: int, lines: int) -> void:
@@ -563,8 +563,6 @@ func _on_combo_triggered(level: int, lines: int) -> void:
     var accent: Color = COLORS[posmod(level + lines, COLORS.size())]
     var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
     _spawn_combo_ring(board_center, accent, 0.55, 0.52)
-    if level >= 3:
-        _spawn_asset_vfx(board_center, 0.54)
     if level >= 2:
         _spawn_combo_ring(board_center, Color("#FFE58A"), 0.82, 0.68)
     # Bright radial shards make the chain reward readable even on a busy board.
