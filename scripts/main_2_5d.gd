@@ -10,6 +10,8 @@ var _block_mesh: Mesh
 var _sync_pending := true
 var _last_signature := ""
 var _material_cache: Dictionary = {}
+var _glow_material_cache: Dictionary = {}
+var _glow_plane_mesh: PlaneMesh
 var _effects_root: Node3D
 var _active_visual_effects := 0
 var _board_base_material: StandardMaterial3D
@@ -23,6 +25,8 @@ func _ready() -> void:
     super._ready()
     _setup_3d_view()
     _block_mesh = _make_rounded_block_mesh()
+    _glow_plane_mesh = PlaneMesh.new()
+    _glow_plane_mesh.size = Vector2(0.58, 0.58)
     _sync_pending = true
     set_process(true)
 
@@ -70,9 +74,9 @@ func _setup_3d_view() -> void:
 
     _viewport = SubViewport.new()
     _viewport.name = "KayKit3DViewport"
-    # 2x supersampling: render the 3D block geometry at 2160x4320,
-    # then scale to the unchanged 1080x2160 logical game canvas.
-    _viewport.size = Vector2i(2160, 4320)
+    # 1.5x supersampling keeps edges crisp while reducing mobile GPU work
+    # by about 44% compared with 2x rendering.
+    _viewport.size = Vector2i(1620, 3240)
     _viewport.transparent_bg = true
     _viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
     # Render only when the board or pieces change; continuous redraw wastes mobile GPU time.
@@ -89,13 +93,13 @@ func _setup_3d_view() -> void:
     environment.background_color = Color(0, 0, 0, 0)
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     environment.ambient_light_color = Color(0.72, 0.78, 0.92)
-    environment.ambient_light_energy = 0.95
+    environment.ambient_light_energy = 1.08
     environment_node.environment = environment
     _world_root.add_child(environment_node)
 
     var light := DirectionalLight3D.new()
     light.rotation_degrees = Vector3(-48, -28, 0)
-    light.light_energy = 1.30
+    light.light_energy = 1.48
     # Tile shadows were producing muddy black halos inside the small 8x8 wells.
     # Keep the lighting clean and use material shading for depth instead.
     light.shadow_enabled = false
@@ -226,7 +230,7 @@ func _material_for(color: Color) -> StandardMaterial3D:
     # Strong self-lit color prevents warm tiles from turning dull or dark after placement.
     material.emission_enabled = true
     material.emission = color
-    material.emission_energy_multiplier = 0.16
+    material.emission_energy_multiplier = 0.23
     material.cull_mode = BaseMaterial3D.CULL_DISABLED
     material.roughness = 0.38
     material.metallic = 0.015
@@ -239,6 +243,9 @@ func _material_for(color: Color) -> StandardMaterial3D:
     return material
 
 func _center_glow_material(color: Color) -> ShaderMaterial:
+    var key := color.to_html(true)
+    if _glow_material_cache.has(key):
+        return _glow_material_cache[key]
     var material := ShaderMaterial.new()
     var shader := Shader.new()
     shader.code = """
@@ -251,20 +258,19 @@ void fragment() {
     float glow = exp(-r * r * 30.0);
     float soft_edge = 1.0 - smoothstep(0.12, 0.52, r);
     ALBEDO = glow_color.rgb;
-    EMISSION = glow_color.rgb * (0.20 + glow * 0.85);
-    ALPHA = soft_edge * (0.035 + glow * 0.075);
+    EMISSION = glow_color.rgb * (0.24 + glow * 1.05);
+    ALPHA = soft_edge * (0.045 + glow * 0.095);
 }
 """
     material.shader = shader
-    material.set_shader_parameter("glow_color", color.lightened(0.16))
+    material.set_shader_parameter("glow_color", color.lightened(0.22))
+    _glow_material_cache[key] = material
     return material
 
 func _add_center_glow(parent: Node3D, world_scale: float, color: Color) -> void:
     var glow := MeshInstance3D.new()
     glow.name = "SoftCenterHighlight"
-    var plane := PlaneMesh.new()
-    plane.size = Vector2(0.58, 0.58)
-    glow.mesh = plane
+    glow.mesh = _glow_plane_mesh
     glow.material_override = _center_glow_material(color)
     # PlaneMesh is authored in local X/Y. Rotate its normal from +Z to +Y
     # so the highlight lies flat on the cube's top face.
@@ -497,7 +503,7 @@ func _on_combo_triggered(level: int, lines: int) -> void:
     # Bright radial shards make the chain reward readable even on a busy board.
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
     var center_3d := _screen_to_board_plane(board_center) + Vector3(0, 0.24, 0)
-    for i in range(20):
+    for i in range(12):
         var shard := MeshInstance3D.new()
         var shard_mesh := SphereMesh.new()
         shard_mesh.radius = 0.072 if i % 4 == 0 else 0.048
@@ -516,7 +522,7 @@ func _on_combo_triggered(level: int, lines: int) -> void:
         shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         _effects_root.add_child(shard)
         _active_visual_effects += 1
-        var angle := TAU * float(i) / 20.0
+        var angle := TAU * float(i) / 12.0
         var distance := (0.82 + float(i % 5) * 0.22) * world_per_pixel * board_size
         var target := center_3d + Vector3(cos(angle) * distance, 0.18 + float(i % 4) * 0.07, sin(angle) * distance)
         var burst := create_tween()
