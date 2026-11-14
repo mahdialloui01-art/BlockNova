@@ -69,7 +69,9 @@ func _setup_3d_view() -> void:
 
     _viewport = SubViewport.new()
     _viewport.name = "KayKit3DViewport"
-    _viewport.size = Vector2i(1080, 2160)
+    # 2x supersampling: render the 3D block geometry at 2160x4320,
+    # then scale to the unchanged 1080x2160 logical game canvas.
+    _viewport.size = Vector2i(2160, 4320)
     _viewport.transparent_bg = true
     _viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
     # Render only when the board or pieces change; continuous redraw wastes mobile GPU time.
@@ -127,7 +129,7 @@ func _make_rounded_block_mesh() -> Mesh:
     var half := 0.5
     var radius := 0.105
     var inner := half - radius
-    var segments := 5
+    var segments := 8
     var face_normals := [
         Vector3(1, 0, 0), Vector3(-1, 0, 0),
         Vector3(0, 1, 0), Vector3(0, -1, 0),
