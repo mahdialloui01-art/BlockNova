@@ -503,7 +503,7 @@ func _on_combo_triggered(level: int, lines: int) -> void:
     # Bright radial shards make the chain reward readable even on a busy board.
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
     var center_3d := _screen_to_board_plane(board_center) + Vector3(0, 0.24, 0)
-    for i in range(12):
+    for i in range(6):
         var shard := MeshInstance3D.new()
         var shard_mesh := SphereMesh.new()
         shard_mesh.radius = 0.072 if i % 4 == 0 else 0.048
@@ -522,7 +522,7 @@ func _on_combo_triggered(level: int, lines: int) -> void:
         shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         _effects_root.add_child(shard)
         _active_visual_effects += 1
-        var angle := TAU * float(i) / 12.0
+        var angle := TAU * float(i) / 6.0
         var distance := (0.82 + float(i % 5) * 0.22) * world_per_pixel * board_size
         var target := center_3d + Vector3(cos(angle) * distance, 0.18 + float(i % 4) * 0.07, sin(angle) * distance)
         var burst := create_tween()
@@ -565,8 +565,8 @@ func _spawn_combo_ring(screen_center: Vector2, color: Color, initial_scale: floa
     var torus := TorusMesh.new()
     torus.inner_radius = 0.07
     torus.outer_radius = 0.105
-    torus.rings = 40
-    torus.ring_segments = 10
+    torus.rings = 24
+    torus.ring_segments = 8
     ring.mesh = torus
     ring.rotation.x = PI * 0.5
     var material := StandardMaterial3D.new()
