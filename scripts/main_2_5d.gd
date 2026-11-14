@@ -364,26 +364,30 @@ func _build_single_board_mesh() -> MeshInstance3D:
     return board_node
 
 func _update_board_theme() -> void:
-    # Keep empty wells dark and neutral so every placed tile keeps its own color.
-    # The dominant hue is used only as a restrained accent on the frame and rails.
-    var tint: Color = _theme_color
+    # Warm, saturated board finish that still follows the dominant tile color.
+    # A golden-cocoa bias makes the board feel vivid and welcoming without
+    # washing out the individual colors of the placed pieces.
+    var dominant: Color = _theme_color
+    var warm_tint: Color = dominant.lerp(Color("#FF9A45"), 0.38)
+    var deep_warm: Color = dominant.darkened(0.58).lerp(Color("#512719"), 0.42)
     if _board_base_material != null:
-        _board_base_material.albedo_color = Color("#081722").lerp(tint.darkened(0.72), 0.12)
+        _board_base_material.albedo_color = Color("#160D12").lerp(deep_warm, 0.48)
         _board_base_material.emission_enabled = true
-        _board_base_material.emission = tint.darkened(0.62)
-        _board_base_material.emission_energy_multiplier = 0.045
-        _board_base_material.roughness = 0.78
+        _board_base_material.emission = warm_tint.darkened(0.58)
+        _board_base_material.emission_energy_multiplier = 0.075
+        _board_base_material.roughness = 0.68
     if _board_floor_material != null:
-        _board_floor_material.albedo_color = Color("#102936").lerp(tint.darkened(0.66), 0.10)
-        _board_floor_material.emission_enabled = false
-        _board_floor_material.emission_energy_multiplier = 0.0
-        _board_floor_material.roughness = 0.88
+        _board_floor_material.albedo_color = Color("#24151A").lerp(dominant.darkened(0.62).lerp(Color("#63351F"), 0.34), 0.42)
+        _board_floor_material.emission_enabled = true
+        _board_floor_material.emission = warm_tint.darkened(0.72)
+        _board_floor_material.emission_energy_multiplier = 0.025
+        _board_floor_material.roughness = 0.82
     if _board_wall_material != null:
-        _board_wall_material.albedo_color = Color("#267D82").lerp(tint.lightened(0.10), 0.24)
+        _board_wall_material.albedo_color = Color("#A95432").lerp(warm_tint.lightened(0.12), 0.46)
         _board_wall_material.emission_enabled = true
-        _board_wall_material.emission = tint.lightened(0.12)
-        _board_wall_material.emission_energy_multiplier = 0.12
-        _board_wall_material.roughness = 0.52
+        _board_wall_material.emission = warm_tint.lightened(0.16)
+        _board_wall_material.emission_energy_multiplier = 0.22
+        _board_wall_material.roughness = 0.48
 
 func _update_drag_preview(ghost_origin: Vector2i) -> void:
     if _viewport == null or _models_root == null or selected < 0 or selected >= pieces.size():
