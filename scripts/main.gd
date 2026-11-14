@@ -55,6 +55,8 @@ var _theme_target := Color("#27DDF2")
 var placement_note_index := 0
 var _last_cleared_cells: Array[Vector2i] = []
 var _last_cleared_colors: Dictionary = {}
+var combo_popup_time := 0.0
+var combo_popup_level := 0
 
 func _setup_audio() -> void:
 	# Layered, original game-audio palette. Generated locally so no external
@@ -357,6 +359,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	# Follow the most common block/tray color with a soft, cinematic transition.
 	_theme_target = _dominant_board_color()
+	if combo_popup_time > 0.0:
+		combo_popup_time = maxf(0.0, combo_popup_time - delta)
+		queue_redraw()
 	var blend := 1.0 - exp(-delta * 2.6)
 	var next_color := _theme_color.lerp(_theme_target, blend)
 	var color_delta := maxf(maxf(absf(_theme_color.r - next_color.r), absf(_theme_color.g - next_color.g)), maxf(absf(_theme_color.b - next_color.b), absf(_theme_color.a - next_color.a)))
@@ -697,6 +702,15 @@ func _draw_game() -> void:
 	_draw_text(best_label+str(visible_best),Vector2(w-190,h*0.19),15,Color("#F5D77B"))
 	if combo_streak > 0:
 		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#32E6D1"))
+	if combo_popup_time > 0.0 and combo_popup_level > 0:
+		var pop_progress := 1.0 - combo_popup_time / 1.15
+		var pop_alpha := minf(1.0, combo_popup_time * 3.2)
+		var pop_scale := 1.0 + 0.18 * sin(minf(pop_progress * 3.0, 1.0) * PI)
+		var pop_text := "COMBO x%d  •  %s" % [combo_popup_level, "UNSTOPPABLE!" if combo_popup_level >= 5 else ("ON FIRE!" if combo_popup_level >= 3 else "NICE CHAIN!")]
+		var pop_size := int(22.0 * pop_scale)
+		var pop_y := board_origin.y + board_size * 0.5 - 16.0 - pop_progress * 42.0
+		draw_string(font, Vector2(2, pop_y + 3), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size, Color(0.04, 0.02, 0.10, pop_alpha * 0.85))
+		draw_string(font, Vector2(0, pop_y), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size, Color(1.0, 0.91, 0.48, pop_alpha))
 	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#805BFF"))
 	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#34DDF0"))
 	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#A8B6D4"),HORIZONTAL_ALIGNMENT_CENTER,w)
@@ -983,8 +997,15 @@ func _try_place(at: Vector2i) -> void:
 		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
 		combo_streak += 1
 		score += 75 * combo_streak
+		# Reward sustained line clears with an escalating chain bonus after x1.
+		if combo_streak > 1:
+			score += cleared * 25 * (combo_streak - 1)
+		combo_popup_level = combo_streak
+		combo_popup_time = 1.15
+		_on_combo_triggered(combo_streak, cleared)
 	else:
 		combo_streak = 0
+		combo_popup_time = 0.0
 		_trigger_haptic(22, 0.30)
 	if score>best:
 		best=score
@@ -1009,6 +1030,10 @@ func _try_place(at: Vector2i) -> void:
 
 func _on_placement_resolved(_placed_cells: Array[Vector2i], _cleared_cells: Array[Vector2i], _placed_color_index: int) -> void:
 	# Rendering subclasses animate this event; keep the rules layer renderer-independent.
+	pass
+
+func _on_combo_triggered(_level: int, _lines: int) -> void:
+	# Rendering subclasses provide the cinematic combo feedback.
 	pass
 
 func _clear_lines() -> int:
