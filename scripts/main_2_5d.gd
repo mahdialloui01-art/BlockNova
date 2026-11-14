@@ -505,6 +505,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool, incl
         tween.tween_callback(effect.queue_free)
     else:
         var pop_material := effect.material_override as StandardMaterial3D
+        _add_piece_cell_aura(effect, color)
         tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
         tween.tween_property(effect, "scale", target_scale * 1.10, 0.12)
         tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -514,6 +515,65 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool, incl
         tween.tween_callback(effect.queue_free)
     tween.finished.connect(_on_visual_effect_finished)
     return effect
+
+
+func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
+    # Every cube in a placed shape gets its own luminous crown and four sparks.
+    # These are children of the already tracked tile pop, so effect cleanup and
+    # the strict root-node budget remain unchanged.
+    var halo := MeshInstance3D.new()
+    halo.name = "PieceCellEnergyHalo"
+    var halo_mesh := TorusMesh.new()
+    halo_mesh.inner_radius = 0.39
+    halo_mesh.outer_radius = 0.48
+    halo_mesh.rings = 20
+    halo_mesh.ring_segments = 7
+    halo.mesh = halo_mesh
+    halo.rotation.x = PI * 0.5
+    halo.position.y = 0.54
+    var halo_mat := StandardMaterial3D.new()
+    halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    halo_mat.albedo_color = Color(color.r, color.g, color.b, 0.92)
+    halo_mat.emission_enabled = true
+    halo_mat.emission = color.lightened(0.65)
+    halo_mat.emission_energy_multiplier = 4.2
+    halo_mat.no_depth_test = true
+    halo.material_override = halo_mat
+    halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(halo)
+    var halo_tween := create_tween()
+    halo_tween.set_parallel(true)
+    halo_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    halo_tween.tween_property(halo, "scale", Vector3.ONE * 1.72, 0.38)
+    halo_tween.tween_property(halo_mat, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.38)
+    halo_tween.tween_property(halo_mat, "emission_energy_multiplier", 0.0, 0.38)
+    for i in range(4):
+        var spark := MeshInstance3D.new()
+        spark.name = "PieceCellSpark"
+        var spark_mesh := SphereMesh.new()
+        spark_mesh.radius = 0.105
+        spark_mesh.height = 0.21
+        spark.mesh = spark_mesh
+        var spark_mat := StandardMaterial3D.new()
+        spark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        spark_mat.albedo_color = color.lightened(0.72)
+        spark_mat.emission_enabled = true
+        spark_mat.emission = color.lightened(0.8)
+        spark_mat.emission_energy_multiplier = 4.8
+        spark_mat.no_depth_test = true
+        spark.material_override = spark_mat
+        spark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        parent.add_child(spark)
+        var angle := TAU * float(i) / 4.0
+        spark.position = Vector3(cos(angle) * 0.36, 0.56, sin(angle) * 0.36)
+        spark.scale = Vector3.ONE * 0.25
+        var spark_tween := create_tween()
+        spark_tween.set_parallel(true)
+        spark_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+        spark_tween.tween_property(spark, "position", Vector3(cos(angle) * 0.82, 0.72, sin(angle) * 0.82), 0.36)
+        spark_tween.tween_property(spark, "scale", Vector3.ZERO, 0.36)
+        spark_tween.tween_property(spark_mat, "emission_energy_multiplier", 0.0, 0.36)
 
 
 func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: float, effect_parent: Node3D) -> void:
@@ -585,15 +645,36 @@ func _on_combo_triggered(level: int, lines: int) -> void:
         return
     var accent: Color = COLORS[posmod(level + lines, COLORS.size())]
     var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
-    _spawn_combo_ring(board_center, accent, 0.55, 0.52)
-    if level >= 5:
-        _spawn_fire_cast_vfx(board_center)
-    if level >= 2:
-        _spawn_combo_ring(board_center, Color("#FFE58A"), 0.82, 0.68)
-    # Bright radial shards make the chain reward readable even on a busy board.
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
     var center_3d := _screen_to_board_plane(board_center) + Vector3(0, 0.24, 0)
-    for i in range(6):
+
+    # Each milestone gets a distinct, escalating spectacle.
+    _spawn_combo_ring(board_center, accent, 0.48, 0.54)
+    _spawn_combo_ring(board_center, Color("#FFE58A"), 0.72, 0.72)
+    if level >= 3:
+        _spawn_combo_ring(board_center, Color("#FFFFFF"), 0.92, 0.84)
+    if level >= 5:
+        _spawn_fire_cast_vfx(board_center)
+        _spawn_combo_ring(board_center, Color("#FF8B43"), 1.08, 0.96)
+    if level >= 8:
+        _spawn_fire_cast_vfx(board_center + Vector2(-board_size * 0.18, 0))
+        _spawn_combo_ring(board_center, Color("#8BF7FF"), 1.30, 1.08)
+        _spawn_combo_ring(board_center, Color("#C59BFF"), 1.52, 1.18)
+    if level >= 10:
+        _spawn_fire_cast_vfx(board_center + Vector2(board_size * 0.18, 0))
+        _spawn_combo_ring(board_center, Color("#FFFFFF"), 1.76, 1.30)
+        _spawn_combo_ring(board_center, Color("#FFD45C"), 1.98, 1.42)
+
+    var shard_count := 6
+    if level >= 3:
+        shard_count = 10
+    if level >= 5:
+        shard_count = 14
+    if level >= 8:
+        shard_count = 18
+    if level >= 10:
+        shard_count = 24
+    for i in range(shard_count):
         var shard := MeshInstance3D.new()
         var shard_mesh := SphereMesh.new()
         shard_mesh.radius = 0.072 if i % 4 == 0 else 0.048
@@ -604,7 +685,7 @@ func _on_combo_triggered(level: int, lines: int) -> void:
         mat.albedo_color = accent.lightened(0.45)
         mat.emission_enabled = true
         mat.emission = accent.lightened(0.5)
-        mat.emission_energy_multiplier = 3.8
+        mat.emission_energy_multiplier = 3.8 + float(level) * 0.22
         mat.no_depth_test = true
         shard.material_override = mat
         shard.position = center_3d
@@ -612,42 +693,58 @@ func _on_combo_triggered(level: int, lines: int) -> void:
         shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         _effects_root.add_child(shard)
         _active_visual_effects += 1
-        var angle := TAU * float(i) / 6.0
+        var angle := TAU * float(i) / float(shard_count)
         var distance := (0.82 + float(i % 5) * 0.22) * world_per_pixel * board_size
         var target := center_3d + Vector3(cos(angle) * distance, 0.18 + float(i % 4) * 0.07, sin(angle) * distance)
         var burst := create_tween()
         burst.set_parallel(true)
         burst.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-        burst.tween_property(shard, "position", target, 0.62)
-        burst.tween_property(shard, "scale", Vector3.ZERO, 0.62)
-        burst.tween_property(mat, "emission_energy_multiplier", 0.0, 0.48)
+        burst.tween_property(shard, "position", target, 0.62 + float(level) * 0.025)
+        burst.tween_property(shard, "scale", Vector3.ZERO, 0.62 + float(level) * 0.025)
+        burst.tween_property(mat, "emission_energy_multiplier", 0.0, 0.48 + float(level) * 0.025)
         burst.chain().tween_callback(shard.queue_free)
         burst.finished.connect(_on_visual_effect_finished)
+
+    var milestone := ""
+    match level:
+        3: milestone = "GOOD!"
+        5: milestone = "AMAZING!"
+        8: milestone = "UNSTOPPABLE!"
+        10: milestone = "LEGENDARY!"
+        _:
+            milestone = "ON FIRE!" if level > 3 else "NICE CHAIN!"
     var banner := Label.new()
     banner.name = "ComboCelebration"
-    banner.text = "COMBO x%d  •  %s" % [level, "UNSTOPPABLE!" if level >= 5 else ("ON FIRE!" if level >= 3 else "NICE CHAIN!")]
+    banner.text = "COMBO x%d  •  %s" % [level, milestone]
     banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    banner.add_theme_font_size_override("font_size", 38 if level < 3 else 44)
-    banner.add_theme_color_override("font_color", Color("#FFE58A"))
+    banner.add_theme_font_size_override("font_size", 38 if level < 3 else (48 if level >= 8 else 44))
+    var banner_color := Color("#FFE58A")
+    if level >= 5:
+        banner_color = Color("#FFB56C")
+    if level >= 8:
+        banner_color = Color("#9CF7FF")
+    if level >= 10:
+        banner_color = Color("#FFFFFF")
+    banner.add_theme_color_override("font_color", banner_color)
     banner.add_theme_color_override("font_outline_color", Color("#39204F"))
-    banner.add_theme_constant_override("outline_size", 11)
-    banner.add_theme_color_override("font_shadow_color", Color(0.02, 0.01, 0.08, 0.92))
+    banner.add_theme_constant_override("outline_size", 12 if level >= 8 else 11)
+    banner.add_theme_color_override("font_shadow_color", Color(0.02, 0.01, 0.08, 0.96))
     banner.add_theme_constant_override("shadow_offset_x", 3)
     banner.add_theme_constant_override("shadow_offset_y", 6)
-    banner.add_theme_constant_override("shadow_outline_size", 10)
+    banner.add_theme_constant_override("shadow_outline_size", 12)
     banner.position = Vector2(8, board_center.y - 54)
-    banner.size = Vector2(size.x - 16, 78)
-    banner.scale = Vector2(0.42, 0.42)
+    banner.size = Vector2(size.x - 16, 86)
+    banner.scale = Vector2(0.32, 0.32) if level >= 10 else Vector2(0.42, 0.42)
     banner.pivot_offset = banner.size * 0.5
     banner.z_index = 140
     add_child(banner)
     var banner_tween := create_tween()
     banner_tween.set_parallel(true)
     banner_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-    banner_tween.tween_property(banner, "scale", Vector2.ONE, 0.24)
-    banner_tween.tween_property(banner, "position:y", board_center.y - 128, 1.05)
-    banner_tween.chain().tween_property(banner, "modulate:a", 0.0, 0.25)
+    banner_tween.tween_property(banner, "scale", Vector2.ONE, 0.28)
+    banner_tween.tween_property(banner, "position:y", board_center.y - (148 if level >= 8 else 128), 1.10)
+    banner_tween.chain().tween_property(banner, "modulate:a", 0.0, 0.30)
     banner_tween.tween_callback(banner.queue_free)
 
 func _spawn_combo_ring(screen_center: Vector2, color: Color, initial_scale: float, duration: float) -> void:

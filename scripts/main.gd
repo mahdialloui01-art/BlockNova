@@ -179,9 +179,29 @@ func _update_music_state() -> void:
 		_music_player.stop()
 
 func _play_combo_voice(level: int) -> void:
-	# Android TTS can terminate some device builds when invoked during gameplay.
-	# Combo celebration is handled by the in-game synthesized audio and visual banner.
-	return
+	# Use the platform's native TTS service only when Godot reports it available.
+	# This keeps devices without an installed voice engine completely silent and safe.
+	if not sound_enabled or not DisplayServer.has_feature(DisplayServer.FEATURE_TEXT_TO_SPEECH):
+		return
+	var phrases := {
+		3: "Good!",
+		5: "Amazing!",
+		8: "Unstoppable!",
+		10: "Legendary!"
+	}
+	if not phrases.has(level):
+		return
+	var voices := DisplayServer.tts_get_voices_for_language("en")
+	if voices.is_empty():
+		var all_voices := DisplayServer.tts_get_voices()
+		if all_voices.is_empty():
+			return
+		voices.append(str(all_voices[0].get("id", "")))
+	var voice_id := str(voices[0])
+	if voice_id.is_empty():
+		return
+	# Short, energetic calls; interrupt stale praise so the newest milestone is heard.
+	DisplayServer.tts_speak(str(phrases[level]), voice_id, 100, 1.12, 1.08, level, true)
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
@@ -1048,7 +1068,7 @@ func _update_combo_streak(cleared: int) -> void:
 	if cleared > 0:
 		combo_missed_placements = 0
 		combo_streak += 1
-		if combo_streak == 3:
+		if combo_streak in [3, 5, 8, 10]:
 			_play_combo_voice(combo_streak)
 		return
 	if combo_streak <= 0:
