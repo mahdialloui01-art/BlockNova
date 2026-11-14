@@ -474,7 +474,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
     _active_visual_effects += 1
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     if is_clear:
-        _spawn_clear_debris(center, color, block_world)
+        _spawn_clear_debris(center, color, block_world, effect)
     else:
         _spawn_placement_ripple(center, color)
     var tween := create_tween()
@@ -482,9 +482,9 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
         var material := effect.material_override as StandardMaterial3D
         tween.set_parallel(true)
         tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-        tween.tween_property(effect, "scale", target_scale * 1.28, 0.22)
-        tween.tween_property(material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.22)
-        tween.tween_property(material, "emission_energy_multiplier", 0.0, 0.22)
+        tween.tween_property(effect, "scale", target_scale * 1.28, 0.36)
+        tween.tween_property(material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.36)
+        tween.tween_property(material, "emission_energy_multiplier", 0.0, 0.36)
         tween.chain().tween_callback(effect.queue_free)
     else:
         tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -495,12 +495,11 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
     tween.finished.connect(_on_visual_effect_finished)
 
 
-func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: float) -> void:
-    # Two small beveled 3D fragments per sampled cleared tile.
-    # The hard cap in _on_placement_resolved keeps this burst inexpensive on Android.
-    if _effects_root == null or _viewport == null or _block_mesh == null:
+func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: float, effect_parent: Node3D) -> void:
+    # Keep fragments under the single tracked clear-flash node. This preserves
+    # the strict three-effect budget (placement pop, ripple, clear feedback).
+    if effect_parent == null or block_world <= 0.0:
         return
-    var origin := _screen_to_board_plane(screen_center) + Vector3(0, block_world * 0.96 + 0.035, 0)
     for i in range(2):
         var shard := MeshInstance3D.new()
         shard.name = "LineClear3DShard"
@@ -511,16 +510,14 @@ func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: floa
         shard_material.emission_enabled = true
         shard_material.emission_energy_multiplier = 1.15
         shard.material_override = shard_material
-        shard.position = origin
-        var shard_size := block_world * (0.19 if i == 0 else 0.14)
+        var shard_size := 0.19 if i == 0 else 0.14
         shard.scale = Vector3.ONE * shard_size
         shard.rotation = Vector3(randf_range(-0.35, 0.35), randf_range(-0.6, 0.6), randf_range(-0.35, 0.35))
         shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-        _effects_root.add_child(shard)
-        _active_visual_effects += 1
+        effect_parent.add_child(shard)
         var angle := randf_range(0.0, TAU)
-        var travel := block_world * randf_range(0.65, 1.15)
-        var target := origin + Vector3(cos(angle) * travel, block_world * randf_range(0.45, 0.9), sin(angle) * travel)
+        var travel := randf_range(0.65, 1.15)
+        var target := Vector3(cos(angle) * travel, randf_range(0.45, 0.9), sin(angle) * travel)
         var burst := create_tween()
         burst.set_parallel(true)
         burst.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -528,9 +525,8 @@ func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: floa
         burst.tween_property(shard, "rotation", shard.rotation + Vector3(1.8, 2.4, 1.5), 0.34)
         burst.tween_property(shard, "scale", Vector3.ZERO, 0.34)
         burst.tween_property(shard_material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.34)
-        burst.tween_property(shard_material, "emission_energy_multiplier", 0.0, 0.34)
-        burst.chain().tween_callback(shard.queue_free)
-        burst.finished.connect(_on_visual_effect_finished)
+
+
 
 func _on_combo_triggered(level: int, lines: int) -> void:
     if _effects_root == null or _viewport == null:
