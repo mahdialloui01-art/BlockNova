@@ -738,31 +738,36 @@ func _dominant_board_color() -> Color:
 func _draw_background() -> void:
 	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
 	var tint := _theme_color
-	# Keep the interface dark and legible while letting the dominant block hue
-	# subtly recolor the entire atmosphere.
-	var top_base := Color("#080D1C") if not menu_screen else Color("#0B1024")
-	var bottom_base := Color("#111A32") if not menu_screen else Color("#171A38")
-	var top_color := top_base.lerp(tint.darkened(0.66), 0.24)
-	var bottom_color := bottom_base.lerp(tint.darkened(0.54), 0.34)
-	var bands := 88
+	# Rich cocoa-to-amber atmosphere: warm base colors stay visible even when
+	# the dominant tile hue changes, while the hue adds a restrained accent.
+	var cocoa := Color("#28120F")
+	var amber := Color("#5A2B18")
+	var top_base := Color("#160C10") if not menu_screen else Color("#1D0D0D")
+	var bottom_base := Color("#35180F") if not menu_screen else Color("#47200F")
+	var warm_top := top_base.lerp(cocoa, 0.42)
+	var warm_bottom := bottom_base.lerp(amber, 0.38)
+	var top_color := warm_top.lerp(tint.darkened(0.72), 0.12)
+	var bottom_color := warm_bottom.lerp(tint.darkened(0.62), 0.16)
+	var bands := 96
 	for i in range(bands):
 		var t := float(i) / float(bands - 1)
 		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), top_color.lerp(bottom_color, t))
-	# Large, blurred-feeling color pools track the dominant block hue.
-	var glow := Color(tint.r, tint.g, tint.b, 0.105)
-	var secondary_glow := Color(tint.r, tint.g, tint.b, 0.055)
-	draw_circle(Vector2(size.x * 0.08, size.y * 0.22), size.x * 0.54, glow)
-	draw_circle(Vector2(size.x * 0.92, size.y * 0.72), size.x * 0.58, Color(tint.lightened(0.18).r, tint.lightened(0.18).g, tint.lightened(0.18).b, 0.075))
-	draw_circle(Vector2(size.x * 0.52, size.y * 0.48), size.x * 0.34, secondary_glow)
-	# Fine particles pick up a hint of the active hue, without reducing contrast.
-	for i in range(34):
+	# Layered amber light pools create a stronger warm glow without flattening UI contrast.
+	var gold_glow := Color("#FF9B45")
+	var copper_glow := Color("#E56B32")
+	draw_circle(Vector2(size.x * 0.08, size.y * 0.22), size.x * 0.62, Color(gold_glow.r, gold_glow.g, gold_glow.b, 0.105))
+	draw_circle(Vector2(size.x * 0.92, size.y * 0.72), size.x * 0.66, Color(copper_glow.r, copper_glow.g, copper_glow.b, 0.095))
+	draw_circle(Vector2(size.x * 0.52, size.y * 0.48), size.x * 0.42, Color(tint.r, tint.g, tint.b, 0.045))
+	draw_circle(Vector2(size.x * 0.50, size.y * 0.88), size.x * 0.48, Color("#FFC06A").r, Color("#FFC06A").g, Color("#FFC06A").b, 0.045)
+	# Tiny amber particles and a warm highlight line reinforce the premium glow.
+	for i in range(42):
 		var px := fmod(float(i) * 83.0 + 23.0, size.x)
 		var py := fmod(float(i) * 137.0 + 61.0, size.y)
-		var alpha := 0.18 if i % 3 == 0 else 0.08
-		draw_circle(Vector2(px, py), 1.2 if i % 4 == 0 else 0.8, Color(tint.r, tint.g, tint.b, alpha))
-	# A subtle luminous line echoes the dominant block color.
+		var alpha := 0.22 if i % 3 == 0 else 0.10
+		var particle_color := Color("#FFB45E") if i % 2 == 0 else Color("#F07A3C")
+		draw_circle(Vector2(px, py), 1.35 if i % 4 == 0 else 0.85, Color(particle_color.r, particle_color.g, particle_color.b, alpha))
 	if not menu_screen:
-		draw_line(Vector2(size.x * 0.08, size.y * 0.12), Vector2(size.x * 0.92, size.y * 0.12), Color(tint.r, tint.g, tint.b, 0.22), 1.2, true)
+		draw_line(Vector2(size.x * 0.08, size.y * 0.12), Vector2(size.x * 0.92, size.y * 0.12), Color("#FFB45E"), 1.5, true)
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var shadow := StyleBoxFlat.new()
