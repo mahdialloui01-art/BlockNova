@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 10
+const GRID := 8
 # Contemporary luminous palette: cyan, ultraviolet, magenta, amber, mint and coral.
 const COLORS := [
 	Color("#27DDF2"), Color("#8B6CFF"), Color("#FF62B5"),
@@ -52,6 +52,7 @@ var _music_player: AudioStreamPlayer
 var _theme_color := Color("#27DDF2")
 var _theme_target := Color("#27DDF2")
 var placement_note_index := 0
+var _last_cleared_cells: Array[Vector2i] = []
 
 func _setup_audio() -> void:
 	# Layered, original game-audio palette. Generated locally so no external
@@ -454,21 +455,20 @@ func _valid_saved_board(value: Variant) -> bool:
 	return true
 
 func _expand_legacy_board(value: Variant) -> Variant:
-	if not (value is Array) or value.size() != 8:
+	# Older builds used a 8x8 board. Preserve its central 8x8 play area
+	# when restoring a save into the agreed 8x8 ruleset.
+	if not (value is Array) or value.size() != 10:
 		return value
 	for row in value:
-		if not (row is Array) or row.size() != 8:
+		if not (row is Array) or row.size() != 10:
 			return value
-	var expanded: Array = []
-	for y in range(GRID):
-		var expanded_row: Array = []
-		for x in range(GRID):
-			expanded_row.append(-1)
-		expanded.append(expanded_row)
-	for y in range(8):
-		for x in range(8):
-			expanded[y + 1][x + 1] = value[y][x]
-	return expanded
+	var cropped: Array = []
+	for y in range(1, 9):
+		var cropped_row: Array = []
+		for x in range(1, 9):
+			cropped_row.append(value[y][x])
+		cropped.append(cropped_row)
+	return cropped
 
 func _valid_saved_pieces(value: Variant) -> bool:
 	if not (value is Array) or value.size() != 3:
@@ -519,7 +519,7 @@ func _restore_saved_session() -> bool:
 		return false
 	var saved_board: Variant = config.get_value("session", "board", [])
 	# Preserve an in-progress 8x8 session from older installs by centering it
-	# inside the new 10x10 board. The extra border starts empty.
+	# inside the new 8x8 board. The extra border starts empty.
 	saved_board = _expand_legacy_board(saved_board)
 	var saved_pieces: Variant = config.get_value("session", "pieces", [])
 	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
@@ -602,7 +602,7 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	# On the 10x10 board, a random tray can occasionally contain only
+	# On the 8x8 board, a random tray can occasionally contain only
 	# shapes that do not fit even though empty cells remain. Reroll the tray
 	# before declaring game over; this keeps difficulty fair without changing
 	# the seeded daily-challenge sequence for a given run.
@@ -956,6 +956,9 @@ func _try_place(at: Vector2i) -> void:
 	for y in range(GRID):
 		if not (board[y] is Array) or board[y].size() != GRID:
 			return
+	var placed_cells: Array[Vector2i] = []
+	for c in shape:
+		placed_cells.append(at + c)
 	var color_index := 0
 	for i in range(COLORS.size()):
 		if piece_colors[selected].is_equal_approx(COLORS[i]):
@@ -975,6 +978,7 @@ func _try_place(at: Vector2i) -> void:
 	pieces[selected]=[]
 	selected=-1
 	var cleared := _clear_lines()
+	_on_placement_resolved(placed_cells, _last_cleared_cells.duplicate())
 	if cleared > 0:
 		_trigger_haptic(64 if cleared >= 2 else 40, 0.58 if cleared >= 2 else 0.42)
 		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
@@ -1004,7 +1008,7 @@ func _try_place(at: Vector2i) -> void:
 		_save_session()
 	queue_redraw()
 
-func _clear_lines() -> int:
+	_last_cleared_cells.clear()
 	if board.size() != GRID:
 		return 0
 	for y in range(GRID):
@@ -1030,10 +1034,14 @@ func _clear_lines() -> int:
 			cols.append(x)
 	for y in rows:
 		for x in range(GRID):
-			board[y][x]=-1
+			_last_cleared_cells.append(Vector2i(x, y))
 	for x in cols:
 		for y in range(GRID):
-			board[y][x]=-1
+			var coordinate := Vector2i(x, y)
+			if not _last_cleared_cells.has(coordinate):
+				_last_cleared_cells.append(coordinate)
+	for coordinate in _last_cleared_cells:
+		board[coordinate.y][coordinate.x] = -1
 	var cleared=rows.size()+cols.size()
 	if cleared>0:
 		score+=cleared*cleared*100
