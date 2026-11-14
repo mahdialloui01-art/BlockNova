@@ -16,6 +16,19 @@ func _run_tests() -> void:
         return
     if not _check(game.get("_block_mesh") is Mesh, "The active scene must build its rounded 3D block mesh"):
         return
+    var glow_parent := Node3D.new()
+    game.add_child(glow_parent)
+    game.call("_add_center_glow", glow_parent, 1.25, Color("#27DDF2"))
+    var glow_node := glow_parent.get_node_or_null("SoftCenterHighlight") as MeshInstance3D
+    if not _check(glow_node != null and glow_node.mesh is PlaneMesh, "Block highlight must create a plane mesh"):
+        return
+    if not _check(absf(glow_node.rotation.x + PI * 0.5) < 0.001, "Block highlight plane must face upward onto the top face"):
+        return
+    if not _check(glow_node.scale.is_equal_approx(Vector3.ONE), "Block highlight must use local unit scale to avoid double scaling"):
+        return
+    if not _check(glow_node.position.is_equal_approx(Vector3(0, 0.505, 0)), "Block highlight must sit just above the cube top"):
+        return
+    glow_parent.queue_free()
     var music_player := game.get("_music_player") as AudioStreamPlayer
     var music_stream := music_player.stream as AudioStreamWAV if music_player != null else null
     if not _check(music_stream != null and music_stream.mix_rate == 24000, "Background music must use the mobile-optimized 24 kHz sample rate"):
