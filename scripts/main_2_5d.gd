@@ -420,6 +420,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
         tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
         tween.tween_property(effect, "scale", target_scale * 1.28, 0.22)
         tween.tween_property(material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.22)
+        tween.tween_property(material, "emission_energy_multiplier", 0.0, 0.22)
         tween.chain().tween_callback(effect.queue_free)
     else:
         tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
