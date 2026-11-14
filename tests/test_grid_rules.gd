@@ -245,9 +245,9 @@ func _run_tests() -> void:
 
     # A completely filled board has no legal move, even with the fallback piece.
     var blocked_board := []
-    for y in range(10):
+    for y in range(8):
         var row: Array = []
-        for x in range(10):
+        for x in range(8):
             row.append(0)
         blocked_board.append(row)
     game.set("board", blocked_board)
