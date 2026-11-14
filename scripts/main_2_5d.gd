@@ -10,6 +10,8 @@ var _block_mesh: Mesh
 var _sync_pending := true
 var _last_signature := ""
 var _material_cache: Dictionary = {}
+var _effects_root: Node3D
+var _active_visual_effects := 0
 
 func _enter_tree() -> void:
     use_3d_visuals = true
@@ -100,6 +102,9 @@ func _setup_3d_view() -> void:
     _models_root = Node3D.new()
     _models_root.name = "PuzzleMeshes"
     _world_root.add_child(_models_root)
+    _effects_root = Node3D.new()
+    _effects_root.name = "TransientVisualEffects"
+    _world_root.add_child(_effects_root)
 
 func _make_rounded_block_mesh() -> Mesh:
     # Solid Block-Blast-style tile: filled rounded cube, not a hollow crate.
@@ -370,6 +375,65 @@ func _update_drag_preview(ghost_origin: Vector2i) -> void:
     if found > 0:
         _viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
+func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[Vector2i], placed_color_index: int) -> void:
+    if _effects_root == null or _block_mesh == null or _viewport == null:
+        return
+    var placed_color: Color = COLORS[clampi(placed_color_index, 0, COLORS.size() - 1)]
+    for coordinate in placed_cells:
+        if cleared_cells.has(coordinate):
+            continue
+        _spawn_tile_effect(coordinate, placed_color, false)
+    for coordinate in cleared_cells:
+        var cleared_color_index := int(_last_cleared_colors.get(coordinate, placed_color_index))
+        var cleared_color: Color = COLORS[clampi(cleared_color_index, 0, COLORS.size() - 1)]
+        _spawn_tile_effect(coordinate, cleared_color, true)
+
+func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> void:
+    if _effects_root == null or _viewport == null or _block_mesh == null:
+        return
+    var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
+    var block_world := cell * world_per_pixel * 0.78
+    var center := board_origin + Vector2((float(coordinate.x) + 0.5) * cell, (float(coordinate.y) + 0.5) * cell)
+    var effect := MeshInstance3D.new()
+    effect.name = "ClearFlash" if is_clear else "PlacementPop"
+    effect.mesh = _block_mesh
+    effect.position = _screen_to_board_plane(center) + Vector3(0, block_world * 0.50 + 0.012, 0)
+    var target_scale := Vector3.ONE * block_world
+    if is_clear:
+        var fade_material := (_material_for(color).duplicate() as StandardMaterial3D)
+        fade_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        fade_material.albedo_color = Color(color.r, color.g, color.b, 0.94)
+        fade_material.emission_energy_multiplier = 0.9
+        effect.material_override = fade_material
+        effect.scale = target_scale
+    else:
+        effect.material_override = _material_for(color)
+        effect.scale = target_scale * 0.42
+    effect.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    _effects_root.add_child(effect)
+    _active_visual_effects += 1
+    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    var tween := create_tween()
+    if is_clear:
+        var material := effect.material_override as StandardMaterial3D
+        tween.set_parallel(true)
+        tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+        tween.tween_property(effect, "scale", target_scale * 1.28, 0.22)
+        tween.tween_property(material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.22)
+        tween.chain().tween_callback(effect.queue_free)
+    else:
+        tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+        tween.tween_property(effect, "scale", target_scale * 1.10, 0.12)
+        tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+        tween.tween_property(effect, "scale", target_scale, 0.08)
+        tween.tween_callback(effect.queue_free)
+    tween.finished.connect(_on_visual_effect_finished)
+
+func _on_visual_effect_finished() -> void:
+    _active_visual_effects = maxi(0, _active_visual_effects - 1)
+    if _active_visual_effects == 0 and _viewport != null:
+        _viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+
 func _sync_3d_models() -> void:
     if _viewport == null or _models_root == null:
         return
@@ -394,7 +458,7 @@ func _sync_3d_models() -> void:
         return
     _last_signature = signature
     # A single frame is enough to refresh this static 3D scene after a state change.
-    _viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _active_visual_effects > 0 else SubViewport.UPDATE_ONCE
     for child in _models_root.get_children():
         child.queue_free()
     if not visible_3d or _block_mesh == null:
