@@ -1,0 +1,5 @@
+Elemental Magic FX — Binbun3D
+License: Creative Commons Zero (CC0) 1.0 Universal.
+The supplied archive's license.txt explicitly permits personal, educational and commercial use without attribution.
+Official license: https://creativecommons.org/publicdomain/zero/1.0/
+BlockNova uses the procedural Fire Cast visual scene and shader only; no audio is shipped from this pack.

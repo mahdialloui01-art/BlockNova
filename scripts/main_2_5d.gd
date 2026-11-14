@@ -1,6 +1,7 @@
 extends "res://scripts/main.gd"
 
 const ENERGY_HIT_VFX: PackedScene = preload("res://fx/energy_hit/energy_hit.tscn")
+const FIRE_CAST_VFX: PackedScene = preload("res://assets/BinbunVFX_Vol2/ElementalMagicFX/effects/cast/vfx_fire_cast_01.tscn")
 
 var _overlay_layer: CanvasLayer
 var _viewport_container: SubViewportContainer
@@ -560,12 +561,33 @@ func _spawn_asset_vfx(effect_parent: Node3D, effect_scale: float) -> void:
     effect_parent.add_child(effect)
 
 
+func _spawn_fire_cast_vfx(screen_center: Vector2) -> void:
+    if _effects_root == null or _viewport == null:
+        return
+    var effect := FIRE_CAST_VFX.instantiate() as Node3D
+    if effect == null:
+        return
+    effect.name = "LicensedFireCastVFX"
+    effect.set("one_shot", true)
+    effect.set("autoplay", false)
+    effect.position = _screen_to_board_plane(screen_center) + Vector3(0, 0.24, 0)
+    effect.scale = Vector3.ONE * 0.18
+    effect.tree_exited.connect(_on_visual_effect_finished)
+    effect.connect("finished", Callable(effect, "queue_free"))
+    _effects_root.add_child(effect)
+    _active_visual_effects += 1
+    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    effect.call("play")
+
+
 func _on_combo_triggered(level: int, lines: int) -> void:
     if _effects_root == null or _viewport == null:
         return
     var accent: Color = COLORS[posmod(level + lines, COLORS.size())]
     var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
     _spawn_combo_ring(board_center, accent, 0.55, 0.52)
+    if level >= 5:
+        _spawn_fire_cast_vfx(board_center)
     if level >= 2:
         _spawn_combo_ring(board_center, Color("#FFE58A"), 0.82, 0.68)
     # Bright radial shards make the chain reward readable even on a busy board.
