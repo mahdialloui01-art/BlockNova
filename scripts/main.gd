@@ -519,7 +519,7 @@ func _restore_saved_session() -> bool:
 		return false
 	var saved_board: Variant = config.get_value("session", "board", [])
 	# Preserve an in-progress 8x8 session from older installs by centering it
-	# inside the new 10x10 board. The extra border starts empty.
+	# inside the new 8x8 board. The extra border starts empty.
 	saved_board = _expand_legacy_board(saved_board)
 	var saved_pieces: Variant = config.get_value("session", "pieces", [])
 	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
@@ -602,7 +602,7 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	# On the 10x10 board, a random tray can occasionally contain only
+	# On the 8x8 board, a random tray can occasionally contain only
 	# shapes that do not fit even though empty cells remain. Reroll the tray
 	# before declaring game over; this keeps difficulty fair without changing
 	# the seeded daily-challenge sequence for a given run.
