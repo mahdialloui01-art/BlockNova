@@ -33,10 +33,14 @@ func _draw() -> void:
 func _process(_delta: float) -> void:
     # The reference board uses a stable cocoa-brown finish; only tile materials
     # carry color. Avoid needless continuous redraws on mobile devices.
+    # IMPORTANT: do not disable the viewport in the same frame that a board
+    # rebuild requests UPDATE_ONCE, or the newly placed cubes never get drawn.
+    var synced_this_frame := false
     if _sync_pending:
         _sync_pending = false
         _sync_3d_models()
-    if _active_visual_effects == 0 and _viewport != null:
+        synced_this_frame = true
+    if not synced_this_frame and _active_visual_effects == 0 and _viewport != null:
         _viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 func _input(event: InputEvent) -> void:
