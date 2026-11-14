@@ -1,11 +1,11 @@
 extends Control
 
 const GRID := 8
-# Classic emerald block palette, matching the supplied visual reference.
-# A single consistent green keeps the board calm and the beveled cube faces readable.
+# Six distinct, vivid jewel tones with a warm premium balance.
+# Keep each index stable: saved boards store color indices, not Color values.
 const COLORS := [
-	Color("#4BA85B"), Color("#4BA85B"), Color("#4BA85B"),
-	Color("#4BA85B"), Color("#4BA85B"), Color("#4BA85B")
+	Color("#27B978"), Color("#28B8E8"), Color("#9B72E8"),
+	Color("#F28A3B"), Color("#E85F82"), Color("#E6B83F")
 ]
 const SHAPES := [
 	[Vector2i(0,0)],
@@ -725,34 +725,42 @@ func _dominant_board_color() -> Color:
 					var index := int(value)
 					if index >= 0 and index < counts.size():
 						counts[index] += 1
-	# When the board is empty, theme the screen around the strongest color in the current tray.
+	# Prefer placed tiles; only use the tray while the board is empty.
 	if counts.max() == 0:
 		for value in piece_colors:
 			for i in range(COLORS.size()):
 				if value is Color and value.is_equal_approx(COLORS[i]):
 					counts[i] += 1
-	var dominant_index := 0
-	for i in range(1, counts.size()):
-		if counts[i] > counts[dominant_index]:
-			dominant_index = i
+	var highest := counts.max()
+	var candidates: Array[int] = []
+	for i in range(counts.size()):
+		if counts[i] == highest:
+			candidates.append(i)
+	# Rotate equal-count choices gently so ties do not permanently favor green/index 0.
+	var dominant_index := candidates[posmod(placement_note_index, candidates.size())]
 	return COLORS[dominant_index]
 
 func _draw_background() -> void:
-	# Soft warm beige/taupe background from the visual reference.
-	# Keep the playfield bright and calm so the dark board and emerald tiles stand out.
-	var top_color := Color("#C7BBA9")
-	var bottom_color := Color("#B4A58F")
+	# Cocoa remains the foundation; the dominant jewel tone now visibly tints the whole scene.
+	var accent := _theme_color
+	var warm_top := Color("#C98B58")
+	var warm_bottom := Color("#684638")
+	var top_color := warm_top.lerp(accent.darkened(0.22), 0.24)
+	var bottom_color := warm_bottom.lerp(accent.darkened(0.38), 0.30)
 	var bands := 96
 	for i in range(bands):
 		var t := float(i) / float(bands - 1)
-		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), top_color.lerp(bottom_color, t))
-	# Very subtle warm light pools preserve depth without a strong neon glow.
-	draw_circle(Vector2(size.x * 0.12, size.y * 0.18), size.x * 0.58, Color(1.0, 0.91, 0.78, 0.055))
-	draw_circle(Vector2(size.x * 0.88, size.y * 0.76), size.x * 0.62, Color(0.78, 0.59, 0.39, 0.035))
+		var base := top_color.lerp(bottom_color, t)
+		var glow_mix := (1.0 - t) * 0.12
+		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), base.lerp(accent.lightened(0.28), glow_mix))
+	# Broad, soft color pools make the hue shift visible beyond the board without flattening the cocoa atmosphere.
+	draw_circle(Vector2(size.x * 0.14, size.y * 0.18), size.x * 0.64, Color(accent.r, accent.g, accent.b, 0.17))
+	draw_circle(Vector2(size.x * 0.88, size.y * 0.72), size.x * 0.70, Color(accent.lightened(0.22).r, accent.lightened(0.22).g, accent.lightened(0.22).b, 0.11))
+	draw_circle(Vector2(size.x * 0.50, size.y * 0.48), size.x * 0.82, Color(1.0, 0.72, 0.43, 0.045))
 	for i in range(54):
 		var px := fmod(float(i) * 83.0 + 23.0, size.x)
 		var py := fmod(float(i) * 137.0 + 61.0, size.y)
-		draw_circle(Vector2(px, py), 0.8 if i % 4 == 0 else 0.45, Color(0.48, 0.39, 0.29, 0.055))
+		draw_circle(Vector2(px, py), 0.8 if i % 4 == 0 else 0.45, Color(1.0, 0.78, 0.56, 0.075))
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var shadow := StyleBoxFlat.new()
