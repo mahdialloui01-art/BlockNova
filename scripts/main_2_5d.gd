@@ -397,7 +397,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
     var effect := MeshInstance3D.new()
     effect.name = "ClearFlash" if is_clear else "PlacementPop"
     effect.mesh = _block_mesh
-    effect.position = _screen_to_board_plane(center) + Vector3(0, block_world * 0.50 + 0.012, 0)
+    effect.position = _screen_to_board_plane(center) + Vector3(0, block_world * 0.98 + 0.025, 0)
     var target_scale := Vector3.ONE * block_world
     if is_clear:
         var fade_material := (_material_for(color).duplicate() as StandardMaterial3D)
