@@ -582,11 +582,24 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	pieces.clear()
-	piece_colors.clear()
-	for i in range(3):
-		pieces.append(SHAPES[game_rng.randi_range(0, SHAPES.size() - 1)].duplicate())
-		piece_colors.append(COLORS[game_rng.randi_range(0, COLORS.size() - 1)])
+	# On the compact 8x8 board, a random tray can occasionally contain only
+	# shapes that do not fit even though empty cells remain. Reroll the tray
+	# before declaring game over; this keeps difficulty fair without changing
+	# the seeded daily-challenge sequence for a given run.
+	var attempts := 0
+	while attempts < 16:
+		pieces.clear()
+		piece_colors.clear()
+		for i in range(3):
+			pieces.append(SHAPES[game_rng.randi_range(0, SHAPES.size() - 1)].duplicate())
+			piece_colors.append(COLORS[game_rng.randi_range(0, COLORS.size() - 1)])
+		if _any_move():
+			return
+		attempts += 1
+	# A one-cell piece fits whenever at least one board cell is empty.
+	# Keep a final guaranteed option instead of ending on an unlucky tray.
+	pieces[0] = SHAPES[0].duplicate()
+	piece_colors[0] = COLORS[game_rng.randi_range(0, COLORS.size() - 1)]
 	if not _any_move():
 		game_over = true
 		_play_sfx("gameover")
