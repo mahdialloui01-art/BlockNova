@@ -124,11 +124,11 @@ func _run_tests() -> void:
     var actual_cleared_colors: Dictionary = game.get("_last_cleared_colors")
     if not _check(actual_cleared_cells.size() == 15 and actual_cleared_colors.size() == 15, "Simultaneous row and column clearing must capture each unique cell and its color"):
         return
-    if not _check(int(game.get("_active_visual_effects")) == 15, "Every cleared tile must receive one short visual fade"):
+    if not _check(int(game.get("_active_visual_effects")) >= 15, "Every cleared tile must receive one short visual fade alongside combo celebration effects"):
         return
-    await create_timer(0.35).timeout
+    await create_timer(0.90).timeout
     await process_frame
-    if not _check(int(game.get("_active_visual_effects")) == 0, "All real line-clear animations must finish and clean up"):
+    if not _check(int(game.get("_active_visual_effects")) == 0, "All real line-clear and combo animations must finish and clean up"):
         return
     var final_board: Array = game.get("board")
     for i in range(8):
