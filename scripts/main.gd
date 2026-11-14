@@ -27,6 +27,7 @@ var pieces: Array = []
 var piece_colors: Array = []
 var score := 0
 var combo_streak := 0
+var combo_missed_placements := 0
 var best := 0
 var selected := -1
 var dragging := false
@@ -517,6 +518,7 @@ func _save_session() -> void:
 	config.set_value("session", "piece_colors", saved_colors)
 	config.set_value("session", "score", score)
 	config.set_value("session", "combo_streak", combo_streak)
+	config.set_value("session", "combo_missed_placements", combo_missed_placements)
 	config.set_value("session", "daily_mode", daily_mode)
 	config.set_value("session", "daily_date_key", daily_date_key)
 	config.set_value("session", "daily_best", daily_best)
@@ -556,6 +558,7 @@ func _restore_saved_session() -> bool:
 	piece_colors = restored_colors
 	score = maxi(0, int(config.get_value("session", "score", 0)))
 	combo_streak = maxi(0, int(config.get_value("session", "combo_streak", 0)))
+	combo_missed_placements = clampi(int(config.get_value("session", "combo_missed_placements", 0)), 0, 2)
 	daily_mode = restored_daily_mode
 	daily_date_key = restored_date
 	daily_best = maxi(0, int(config.get_value("session", "daily_best", 0)))
@@ -606,6 +609,7 @@ func _reset_game() -> void:
 		board.append(row)
 	score = 0
 	combo_streak = 0
+	combo_missed_placements = 0
 	placement_note_index = 0
 	selected = -1
 	dragging = false
@@ -1003,9 +1007,7 @@ func _try_place(at: Vector2i) -> void:
 	if cleared > 0:
 		_trigger_haptic(64 if cleared >= 2 else 40, 0.58 if cleared >= 2 else 0.42)
 		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
-		combo_streak += 1
-		if combo_streak == 3:
-			_play_combo_voice(combo_streak)
+		_update_combo_streak(cleared)
 		score += 75 * combo_streak
 		# Reward sustained line clears with an escalating chain bonus after x1.
 		if combo_streak > 1:
@@ -1014,7 +1016,7 @@ func _try_place(at: Vector2i) -> void:
 		combo_popup_time = 2.0
 		_on_combo_triggered(combo_streak, cleared)
 	else:
-		combo_streak = 0
+		_update_combo_streak(0)
 		combo_popup_time = 0.0
 		_trigger_haptic(22, 0.30)
 	if score>best:
@@ -1041,6 +1043,24 @@ func _try_place(at: Vector2i) -> void:
 func _on_placement_resolved(_placed_cells: Array[Vector2i], _cleared_cells: Array[Vector2i], _placed_color_index: int) -> void:
 	# Rendering subclasses animate this event; keep the rules layer renderer-independent.
 	pass
+
+func _update_combo_streak(cleared: int) -> void:
+	if cleared > 0:
+		combo_missed_placements = 0
+		combo_streak += 1
+		if combo_streak == 3:
+			_play_combo_voice(combo_streak)
+		return
+	if combo_streak <= 0:
+		combo_streak = 0
+		combo_missed_placements = 0
+		return
+	# Keep the chain alive through three placements that do not clear a line.
+	combo_missed_placements += 1
+	if combo_missed_placements >= 3:
+		combo_streak = 0
+		combo_missed_placements = 0
+
 
 func _on_combo_triggered(_level: int, _lines: int) -> void:
 	# Rendering subclasses provide the cinematic combo feedback.

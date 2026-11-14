@@ -146,6 +146,24 @@ func _run_tests() -> void:
 
     if not _check(int(game.get("combo_streak")) == 1, "A successful line clear must start combo x1"):
         return
+    game.set("combo_streak", 2)
+    game.set("combo_missed_placements", 0)
+    game.call("_update_combo_streak", 0)
+    if not _check(int(game.get("combo_streak")) == 2 and int(game.get("combo_missed_placements")) == 1, "Combo must survive the first non-clearing placement"):
+        return
+    game.call("_update_combo_streak", 0)
+    if not _check(int(game.get("combo_streak")) == 2 and int(game.get("combo_missed_placements")) == 2, "Combo must survive the second non-clearing placement"):
+        return
+    game.call("_update_combo_streak", 0)
+    if not _check(int(game.get("combo_streak")) == 0 and int(game.get("combo_missed_placements")) == 0, "Combo must reset only after the third consecutive non-clearing placement"):
+        return
+    game.set("combo_streak", 2)
+    game.set("combo_missed_placements", 2)
+    game.call("_update_combo_streak", 1)
+    if not _check(int(game.get("combo_streak")) == 3 and int(game.get("combo_missed_placements")) == 0, "A new line clear must extend combo and reset its missed-placement grace"):
+        return
+    game.set("combo_streak", 1)
+    game.set("combo_missed_placements", 2)
     if not _check(int(game.get("score")) == 630, "Two-line clear score must include placement, clear, and combo bonuses"):
         return
     if not _check(int(game.get("daily_best")) >= 630, "Daily challenge best score must persist the current run"):
