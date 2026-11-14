@@ -8,7 +8,7 @@ func _run_tests() -> void:
     if not _check(main_scene != null, "The active Android scene must load"):
         return
     var rules_script := load("res://scripts/main.gd") as GDScript
-    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 8, "Shared gameplay rules must use a 8x8 board"):
+    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 8, "Shared gameplay rules must use an 8x8 board"):
         return
     var alternate_3d_script := load("res://scripts/main_3d.gd") as GDScript
     if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 8, "Alternate 3D mode must also use a 8x8 board"):
@@ -35,6 +35,26 @@ func _run_tests() -> void:
     if not _check(glow_node.position.is_equal_approx(Vector3(0, 0.505, 0)), "Block highlight must sit just above the cube top"):
         return
     glow_parent.queue_free()
+    if not _check(game.get("_effects_root") is Node3D, "Transient effects must live outside the rebuilt puzzle mesh root"):
+        return
+    var placed_visual_cells: Array[Vector2i] = [Vector2i(0, 0)]
+    var cleared_visual_cells: Array[Vector2i] = [Vector2i(1, 0)]
+    game.set("_last_cleared_colors", {Vector2i(1, 0): 1})
+    game.call("_on_placement_resolved", placed_visual_cells, cleared_visual_cells, 0)
+    var effects_root := game.get("_effects_root") as Node3D
+    if not _check(effects_root.get_child_count() == 2, "Placement and line-clear feedback must create separate lightweight effects"):
+        return
+    if not _check(int(game.get("_active_visual_effects")) == 2, "Both visual effects must be tracked while animating"):
+        return
+    var effect_viewport := game.get("_viewport") as SubViewport
+    if not _check(effect_viewport.render_target_update_mode == SubViewport.UPDATE_ALWAYS, "The 3D viewport must update only while transient effects animate"):
+        return
+    await create_timer(0.35).timeout
+    await process_frame
+    if not _check(int(game.get("_active_visual_effects")) == 0 and effects_root.get_child_count() == 0, "Transient effects must clean themselves up after animation"):
+        return
+    if not _check(effect_viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "The 3D viewport must return to idle mode after effects finish"):
+        return
     var music_player := game.get("_music_player") as AudioStreamPlayer
     var music_stream := music_player.stream as AudioStreamWAV if music_player != null else null
     if not _check(music_stream != null and music_stream.mix_rate == 24000, "Background music must use the mobile-optimized 24 kHz sample rate"):
@@ -160,7 +180,7 @@ func _run_tests() -> void:
     var legacy_board: Array = []
     for y in range(10):
         var legacy_row: Array = []
-        for x in range(8):
+        for x in range(10):
             legacy_row.append(-1)
         legacy_board.append(legacy_row)
     legacy_board[1][2] = 2
