@@ -268,9 +268,9 @@ func _rebuild_3d() -> void:
  board_base.material_override = _mat(Color("#101D35"))
  board_base.position = Vector3(0,-0.19,BOARD_Z)
  world_blocks.add_child(board_base)
+ var board_center_offset := (float(GRID) - 1.0) * 0.5
  for y in range(GRID):
   for x in range(GRID):
-   var board_center_offset := (float(GRID) - 1.0) * 0.5
    var wx := (float(x)-board_center_offset)*CELL
    var wz := BOARD_Z+(float(y)-board_center_offset)*CELL
    _cube(world_blocks, Vector3(wx,-0.015,wz), Color("#263957"), Vector3(0.94,0.12,0.94), "BoardCell")
