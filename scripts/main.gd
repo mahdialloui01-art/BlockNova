@@ -53,6 +53,7 @@ var _theme_color := Color("#27DDF2")
 var _theme_target := Color("#27DDF2")
 var placement_note_index := 0
 var _last_cleared_cells: Array[Vector2i] = []
+var _last_cleared_colors: Dictionary = {}
 
 func _setup_audio() -> void:
 	# Layered, original game-audio palette. Generated locally so no external
@@ -978,7 +979,7 @@ func _try_place(at: Vector2i) -> void:
 	pieces[selected]=[]
 	selected=-1
 	var cleared := _clear_lines()
-	_on_placement_resolved(placed_cells, _last_cleared_cells.duplicate())
+	_on_placement_resolved(placed_cells, _last_cleared_cells.duplicate(), color_index)
 	if cleared > 0:
 		_trigger_haptic(64 if cleared >= 2 else 40, 0.58 if cleared >= 2 else 0.42)
 		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
@@ -1008,12 +1009,13 @@ func _try_place(at: Vector2i) -> void:
 		_save_session()
 	queue_redraw()
 
-func _on_placement_resolved(_placed_cells: Array[Vector2i], _cleared_cells: Array[Vector2i]) -> void:
+func _on_placement_resolved(_placed_cells: Array[Vector2i], _cleared_cells: Array[Vector2i], _placed_color_index: int) -> void:
 	# Rendering subclasses animate this event; keep the rules layer renderer-independent.
 	pass
 
 func _clear_lines() -> int:
 	_last_cleared_cells.clear()
+	_last_cleared_colors.clear()
 	if board.size() != GRID:
 		return 0
 	for y in range(GRID):
@@ -1046,6 +1048,7 @@ func _clear_lines() -> int:
 			if not _last_cleared_cells.has(coordinate):
 				_last_cleared_cells.append(coordinate)
 	for coordinate in _last_cleared_cells:
+		_last_cleared_colors[coordinate] = int(board[coordinate.y][coordinate.x])
 		board[coordinate.y][coordinate.x] = -1
 	var cleared=rows.size()+cols.size()
 	if cleared>0:
