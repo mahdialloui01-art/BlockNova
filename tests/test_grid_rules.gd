@@ -265,9 +265,9 @@ func _run_tests() -> void:
 
 func _empty_board() -> Array:
     var result: Array = []
-    for y in range(10):
+    for y in range(8):
         var row: Array = []
-        for x in range(10):
+        for x in range(8):
             row.append(-1)
         result.append(row)
     return result
