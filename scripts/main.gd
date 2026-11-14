@@ -177,6 +177,15 @@ func _update_music_state() -> void:
 	else:
 		_music_player.stop()
 
+func _play_combo_voice(level: int) -> void:
+	# Celebrate the first three-clear chain with a short spoken reward.
+	# Use the device's native TTS engine so no copyrighted voice recording is bundled.
+	if level != 3 or not sound_enabled:
+		return
+	if DisplayServer.tts_get_voices().is_empty():
+		return
+	DisplayServer.tts_speak("Good!", "", 1.0, 1.12, 1.08, 303, true)
+
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
 	var duration := 0.12
@@ -999,6 +1008,8 @@ func _try_place(at: Vector2i) -> void:
 		_trigger_haptic(64 if cleared >= 2 else 40, 0.58 if cleared >= 2 else 0.42)
 		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
 		combo_streak += 1
+		if combo_streak == 3:
+			_play_combo_voice(combo_streak)
 		score += 75 * combo_streak
 		# Reward sustained line clears with an escalating chain bonus after x1.
 		if combo_streak > 1:
