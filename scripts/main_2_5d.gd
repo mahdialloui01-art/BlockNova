@@ -97,7 +97,9 @@ func _setup_3d_view() -> void:
     var light := DirectionalLight3D.new()
     light.rotation_degrees = Vector3(-48, -28, 0)
     light.light_energy = 1.30
-    light.shadow_enabled = true
+    # Tile shadows were producing muddy black halos inside the small 8x8 wells.
+    # Keep the lighting clean and use material shading for depth instead.
+    light.shadow_enabled = false
     light.shadow_bias = 0.05
     _world_root.add_child(light)
 
@@ -282,6 +284,7 @@ func _add_mesh_instance(at: Vector2, world_scale: float, color: Color, node_name
     instance.material_override = _material_for(color)
     instance.scale = Vector3(world_scale, world_scale * vertical_scale, world_scale)
     instance.position = _screen_to_board_plane(at) + Vector3(0, lift, 0)
+    instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     _models_root.add_child(instance)
     _add_center_glow(instance, world_scale, color)
 
@@ -356,29 +359,31 @@ func _build_single_board_mesh() -> MeshInstance3D:
     mesh.surface_set_material(1, floor_mat)
     mesh.surface_set_material(2, wall_mat)
     _update_board_theme()
-    board_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+    board_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     _models_root.add_child(board_node)
     return board_node
 
 func _update_board_theme() -> void:
-    # The recessed floors, raised rails and solid outer body share the dominant
-    # tile hue, but use different luminance levels to preserve depth and contrast.
+    # Keep empty wells dark and neutral so every placed tile keeps its own color.
+    # The dominant hue is used only as a restrained accent on the frame and rails.
     var tint: Color = _theme_color
     if _board_base_material != null:
-        _board_base_material.albedo_color = tint.darkened(0.58).lerp(Color("#10182B"), 0.30)
+        _board_base_material.albedo_color = Color("#081722").lerp(tint.darkened(0.72), 0.12)
         _board_base_material.emission_enabled = true
-        _board_base_material.emission = tint.darkened(0.42)
-        _board_base_material.emission_energy_multiplier = 0.16
+        _board_base_material.emission = tint.darkened(0.62)
+        _board_base_material.emission_energy_multiplier = 0.045
+        _board_base_material.roughness = 0.78
     if _board_floor_material != null:
-        _board_floor_material.albedo_color = tint.darkened(0.34).lerp(Color("#17223A"), 0.34)
-        _board_floor_material.emission_enabled = true
-        _board_floor_material.emission = tint
-        _board_floor_material.emission_energy_multiplier = 0.10
+        _board_floor_material.albedo_color = Color("#102936").lerp(tint.darkened(0.66), 0.10)
+        _board_floor_material.emission_enabled = false
+        _board_floor_material.emission_energy_multiplier = 0.0
+        _board_floor_material.roughness = 0.88
     if _board_wall_material != null:
-        _board_wall_material.albedo_color = tint.lightened(0.10).darkened(0.12)
+        _board_wall_material.albedo_color = Color("#267D82").lerp(tint.lightened(0.10), 0.24)
         _board_wall_material.emission_enabled = true
-        _board_wall_material.emission = tint.lightened(0.18)
-        _board_wall_material.emission_energy_multiplier = 0.34
+        _board_wall_material.emission = tint.lightened(0.12)
+        _board_wall_material.emission_energy_multiplier = 0.12
+        _board_wall_material.roughness = 0.52
 
 func _update_drag_preview(ghost_origin: Vector2i) -> void:
     if _viewport == null or _models_root == null or selected < 0 or selected >= pieces.size():
