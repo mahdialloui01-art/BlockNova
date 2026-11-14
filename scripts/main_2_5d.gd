@@ -479,6 +479,103 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
         tween.tween_callback(effect.queue_free)
     tween.finished.connect(_on_visual_effect_finished)
 
+func _on_combo_triggered(level: int, lines: int) -> void:
+    if _effects_root == null or _viewport == null:
+        return
+    var accent: Color = COLORS[posmod(level + lines, COLORS.size())]
+    var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
+    _spawn_combo_ring(board_center, accent, 0.55, 0.52)
+    if level >= 2:
+        _spawn_combo_ring(board_center, Color("#FFE58A"), 0.82, 0.68)
+    # Bright radial shards make the chain reward readable even on a busy board.
+    var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
+    var center_3d := _screen_to_board_plane(board_center) + Vector3(0, 0.24, 0)
+    for i in range(12):
+        var shard := MeshInstance3D.new()
+        var shard_mesh := SphereMesh.new()
+        shard_mesh.radius = 0.055 if i % 3 == 0 else 0.035
+        shard_mesh.height = shard_mesh.radius * 2.0
+        shard.mesh = shard_mesh
+        var mat := StandardMaterial3D.new()
+        mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        mat.albedo_color = accent.lightened(0.45)
+        mat.emission_enabled = true
+        mat.emission = accent.lightened(0.5)
+        mat.emission_energy_multiplier = 2.8
+        mat.no_depth_test = true
+        shard.material_override = mat
+        shard.position = center_3d
+        shard.scale = Vector3.ONE * 0.15
+        shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        _effects_root.add_child(shard)
+        _active_visual_effects += 1
+        var angle := TAU * float(i) / 12.0
+        var distance := (0.75 + float(i % 4) * 0.18) * world_per_pixel * board_size
+        var target := center_3d + Vector3(cos(angle) * distance, 0.12 + float(i % 3) * 0.05, sin(angle) * distance)
+        var burst := create_tween()
+        burst.set_parallel(true)
+        burst.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+        burst.tween_property(shard, "position", target, 0.48)
+        burst.tween_property(shard, "scale", Vector3.ZERO, 0.48)
+        burst.tween_property(mat, "emission_energy_multiplier", 0.0, 0.48)
+        burst.chain().tween_callback(shard.queue_free)
+        burst.finished.connect(_on_visual_effect_finished)
+    var banner := Label.new()
+    banner.name = "ComboCelebration"
+    banner.text = "COMBO x%d  •  %s" % [level, "UNSTOPPABLE!" if level >= 5 else ("ON FIRE!" if level >= 3 else "NICE CHAIN!")]
+    banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    banner.add_theme_font_size_override("font_size", 25 if level < 3 else 29)
+    banner.add_theme_color_override("font_color", Color("#FFE58A"))
+    banner.add_theme_color_override("font_outline_color", Color("#39204F"))
+    banner.add_theme_constant_override("outline_size", 7)
+    banner.position = Vector2(8, board_center.y - 38)
+    banner.size = Vector2(size.x - 16, 54)
+    banner.scale = Vector2(0.55, 0.55)
+    banner.pivot_offset = banner.size * 0.5
+    banner.z_index = 120
+    add_child(banner)
+    var banner_tween := create_tween()
+    banner_tween.set_parallel(true)
+    banner_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+    banner_tween.tween_property(banner, "scale", Vector2.ONE, 0.24)
+    banner_tween.tween_property(banner, "position:y", board_center.y - 92, 0.78)
+    banner_tween.chain().tween_property(banner, "modulate:a", 0.0, 0.25)
+    banner_tween.tween_callback(banner.queue_free)
+
+func _spawn_combo_ring(screen_center: Vector2, color: Color, initial_scale: float, duration: float) -> void:
+    var ring := MeshInstance3D.new()
+    var torus := TorusMesh.new()
+    torus.inner_radius = 0.07
+    torus.outer_radius = 0.105
+    torus.rings = 40
+    torus.ring_segments = 10
+    ring.mesh = torus
+    ring.rotation.x = PI * 0.5
+    var material := StandardMaterial3D.new()
+    material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    material.albedo_color = Color(color.r, color.g, color.b, 0.98)
+    material.emission_enabled = true
+    material.emission = color.lightened(0.55)
+    material.emission_energy_multiplier = 4.0
+    material.no_depth_test = true
+    ring.material_override = material
+    ring.position = _screen_to_board_plane(screen_center) + Vector3(0, 0.20, 0)
+    ring.scale = Vector3.ONE * initial_scale
+    ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    _effects_root.add_child(ring)
+    _active_visual_effects += 1
+    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    var tween := create_tween()
+    tween.set_parallel(true)
+    tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    tween.tween_property(ring, "scale", Vector3.ONE * 10.0, duration)
+    tween.tween_property(material, "albedo_color", Color(color.r, color.g, color.b, 0.0), duration)
+    tween.tween_property(material, "emission_energy_multiplier", 0.0, duration)
+    tween.chain().tween_callback(ring.queue_free)
+    tween.finished.connect(_on_visual_effect_finished)
+
 func _spawn_placement_ripple(screen_center: Vector2, color: Color) -> void:
     # A bright expanding ring gives every newly placed cube a clear impact cue.
     # The ring is a real 3D mesh, so it stays aligned with the recessed board.
@@ -498,9 +595,10 @@ func _spawn_placement_ripple(screen_center: Vector2, color: Color) -> void:
     glow.albedo_color = Color(color.r, color.g, color.b, 0.92)
     glow.emission_enabled = true
     glow.emission = color.lightened(0.35)
-    glow.emission_energy_multiplier = 2.2
+    glow.emission_energy_multiplier = 3.8
     glow.no_depth_test = true
     ring.material_override = glow
+    ring.rotation.x = PI * 0.5
     ring.position = _screen_to_board_plane(screen_center) + Vector3(0, 0.115, 0)
     ring.scale = Vector3.ONE * 0.28
     ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -510,9 +608,9 @@ func _spawn_placement_ripple(screen_center: Vector2, color: Color) -> void:
     var ripple_tween := create_tween()
     ripple_tween.set_parallel(true)
     ripple_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-    ripple_tween.tween_property(ring, "scale", Vector3.ONE * 7.0, 0.34)
-    ripple_tween.tween_property(glow, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.34)
-    ripple_tween.tween_property(glow, "emission_energy_multiplier", 0.0, 0.34)
+    ripple_tween.tween_property(ring, "scale", Vector3.ONE * 9.0, 0.42)
+    ripple_tween.tween_property(glow, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.42)
+    ripple_tween.tween_property(glow, "emission_energy_multiplier", 0.0, 0.42)
     ripple_tween.chain().tween_callback(ring.queue_free)
     ripple_tween.finished.connect(_on_visual_effect_finished)
 
