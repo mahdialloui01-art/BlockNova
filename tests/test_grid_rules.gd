@@ -53,39 +53,39 @@ func _run_tests() -> void:
     if not _check(preset_text.contains("permissions/vibrate=true"), "Android export must declare the VIBRATE permission"):
         return
     var initial_board: Array = game.get("board")
-    if not _check(initial_board.size() == 10, "New game must create exactly 10 rows"):
+    if not _check(initial_board.size() == 8, "New game must create exactly 8 rows"):
         return
     for row in initial_board:
-        if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 10 cells"):
+        if not _check(row is Array and row.size() == 8, "Every board row must contain exactly 8 cells"):
             return
 
     # Prepare a full bottom row and right column with one shared empty corner.
     var test_board := _empty_board()
-    for x in range(9):
-        test_board[9][x] = 0
-    for y in range(9):
-        test_board[y][9] = 0
+    for x in range(7):
+        test_board[7][x] = 0
+    for y in range(7):
+        test_board[y][7] = 0
 
     game.set("board", test_board)
     game.set("pieces", [[Vector2i(0, 0)], [], []])
     game.set("piece_colors", [Color("#27DDF2")])
     game.set("selected", 0)
 
-    if not _check(game.call("_can_place", [Vector2i(0, 0)], Vector2i(9, 9)), "A single block must fit in the bottom-right cell"):
+    if not _check(game.call("_can_place", [Vector2i(0, 0)], Vector2i(7, 7)), "A single block must fit in the bottom-right cell"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(10, 9)), "Placement beyond the right edge must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(8, 7)), "Placement beyond the right edge must be rejected"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(9, 10)), "Placement beyond the bottom edge must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(7, 8)), "Placement beyond the bottom edge must be rejected"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 9)), "Negative coordinates must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 7)), "Negative coordinates must be rejected"):
         return
 
-    game.call("_try_place", Vector2i(9, 9))
+    game.call("_try_place", Vector2i(7, 7))
     var final_board: Array = game.get("board")
-    for i in range(10):
-        if not _check(int(final_board[9][i]) == -1, "Completed bottom row was not cleared"):
+    for i in range(8):
+        if not _check(int(final_board[7][i]) == -1, "Completed bottom row was not cleared"):
             return
-        if not _check(int(final_board[i][9]) == -1, "Completed right column was not cleared"):
+        if not _check(int(final_board[i][7]) == -1, "Completed right column was not cleared"):
             return
 
     if not _check(int(game.get("combo_streak")) == 1, "A successful line clear must start combo x1"):
@@ -121,7 +121,7 @@ func _run_tests() -> void:
         return
     if not _check(int(game.get("score")) == saved_score, "Resume must restore the score"):
         return
-    if not _check(game.get("board") == saved_board, "Resume must restore all 100 board cells"):
+    if not _check(game.get("board") == saved_board, "Resume must restore all 64 board cells"):
         return
     if not _check(game.get("pieces") == saved_pieces, "Resume must restore the three tray pieces"):
         return
@@ -150,9 +150,9 @@ func _run_tests() -> void:
 
     # A completely filled board with a one-cell piece has no legal move.
     var blocked_board := []
-    for y in range(10):
+    for y in range(8):
         var row: Array = []
-        for x in range(10):
+        for x in range(8):
             row.append(0)
         blocked_board.append(row)
     game.set("board", blocked_board)
@@ -160,15 +160,15 @@ func _run_tests() -> void:
     if not _check(not game.call("_any_move"), "A completely full board must report no legal moves"):
         return
 
-    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, simultaneous line clear, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 8x8 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, simultaneous line clear, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     game.free()
     quit(0)
 
 func _empty_board() -> Array:
     var result: Array = []
-    for y in range(10):
+    for y in range(8):
         var row: Array = []
-        for x in range(10):
+        for x in range(8):
             row.append(-1)
         result.append(row)
     return result
