@@ -75,7 +75,7 @@ func _setup_audio() -> void:
 		_sfx_players[effect] = player
 	_music_player = AudioStreamPlayer.new()
 	_music_player.name = "ModernAmbientMusic"
-	_music_player.volume_db = -24.0
+	_music_player.volume_db = -19.0
 	_music_player.stream = _make_music_stream()
 	add_child(_music_player)
 	_update_music_state()
