@@ -30,9 +30,10 @@ func _draw() -> void:
     super._draw()
     _sync_pending = true
 
-func _process(_delta: float) -> void:
-    # The reference board uses a stable cocoa-brown finish; only tile materials
-    # carry color. Avoid needless continuous redraws on mobile devices.
+func _process(delta: float) -> void:
+    # Keep the inherited smooth dominant-color transition alive in the 3D scene.
+    super._process(delta)
+    _update_board_theme()
     # IMPORTANT: do not disable the viewport in the same frame that a board
     # rebuild requests UPDATE_ONCE, or the newly placed cubes never get drawn.
     var synced_this_frame := false
@@ -362,20 +363,30 @@ func _build_single_board_mesh() -> MeshInstance3D:
     return board_node
 
 func _update_board_theme() -> void:
-    # Fixed cocoa-brown recessed cells and a muted taupe frame, as in the reference.
-    # Tile hue remains emerald; it no longer recolors the empty board.
+    # Recesses, dividers and the outer frame follow the same smoothed dominant hue.
+    # Distinct luminance levels preserve the carved 8x8 wells and strong cube contrast.
+    var accent: Color = _theme_color
+    var frame_color := Color("#8F6045").lerp(accent.darkened(0.18), 0.38)
+    var floor_color := Color("#453027").lerp(accent.darkened(0.62), 0.24)
+    var wall_color := Color("#261A18").lerp(accent.darkened(0.72), 0.20)
     if _board_base_material != null:
-        _board_base_material.albedo_color = Color("#8F8170")
-        _board_base_material.emission_enabled = false
-        _board_base_material.roughness = 0.78
+        _board_base_material.albedo_color = frame_color
+        _board_base_material.emission_enabled = true
+        _board_base_material.emission = accent.darkened(0.30)
+        _board_base_material.emission_energy_multiplier = 0.10
+        _board_base_material.roughness = 0.66
     if _board_floor_material != null:
-        _board_floor_material.albedo_color = Color("#453A32")
-        _board_floor_material.emission_enabled = false
-        _board_floor_material.roughness = 0.88
+        _board_floor_material.albedo_color = floor_color
+        _board_floor_material.emission_enabled = true
+        _board_floor_material.emission = accent.darkened(0.48)
+        _board_floor_material.emission_energy_multiplier = 0.055
+        _board_floor_material.roughness = 0.82
     if _board_wall_material != null:
-        _board_wall_material.albedo_color = Color("#2D241F")
-        _board_wall_material.emission_enabled = false
-        _board_wall_material.roughness = 0.72
+        _board_wall_material.albedo_color = wall_color
+        _board_wall_material.emission_enabled = true
+        _board_wall_material.emission = accent.darkened(0.58)
+        _board_wall_material.emission_energy_multiplier = 0.035
+        _board_wall_material.roughness = 0.70
 
 func _update_drag_preview(ghost_origin: Vector2i) -> void:
     if _viewport == null or _models_root == null or selected < 0 or selected >= pieces.size():
