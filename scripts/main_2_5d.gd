@@ -227,15 +227,15 @@ func _material_for(color: Color) -> StandardMaterial3D:
     # Strong self-lit color prevents warm tiles from turning dull or dark after placement.
     material.emission_enabled = true
     material.emission = color
-    material.emission_energy_multiplier = 0.38
+    material.emission_energy_multiplier = 0.16
     material.cull_mode = BaseMaterial3D.CULL_DISABLED
-    material.roughness = 0.32
-    material.metallic = 0.0
-    material.metallic_specular = 0.38
+    material.roughness = 0.38
+    material.metallic = 0.015
+    material.metallic_specular = 0.46
     material.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
     material.clearcoat_enabled = true
-    material.clearcoat = 0.12
-    material.clearcoat_roughness = 0.30
+    material.clearcoat = 0.24
+    material.clearcoat_roughness = 0.24
     _material_cache[key] = material
     return material
 
@@ -341,17 +341,17 @@ func _build_single_board_mesh() -> MeshInstance3D:
     board_node.name = "OnePieceRecessed3DBoard"
     board_node.mesh = mesh
     var base_mat := StandardMaterial3D.new()
-    base_mat.albedo_color = Color("#F6B66B")
-    base_mat.roughness = 0.68
-    base_mat.metallic = 0.02
+    base_mat.albedo_color = Color("#8F8170")
+    base_mat.roughness = 0.78
+    base_mat.metallic = 0.0
     var floor_mat := StandardMaterial3D.new()
-    floor_mat.albedo_color = Color("#FFE2B5")
-    floor_mat.roughness = 0.42
+    floor_mat.albedo_color = Color("#453A32")
+    floor_mat.roughness = 0.88
     floor_mat.metallic = 0.0
     var wall_mat := StandardMaterial3D.new()
-    wall_mat.albedo_color = Color("#E99A52")
-    wall_mat.roughness = 0.38
-    wall_mat.metallic = 0.02
+    wall_mat.albedo_color = Color("#2D241F")
+    wall_mat.roughness = 0.72
+    wall_mat.metallic = 0.0
     _board_base_material = base_mat
     _board_floor_material = floor_mat
     _board_wall_material = wall_mat
@@ -364,30 +364,20 @@ func _build_single_board_mesh() -> MeshInstance3D:
     return board_node
 
 func _update_board_theme() -> void:
-    # Warm, saturated board finish that still follows the dominant tile color.
-    # A golden-cocoa bias makes the board feel vivid and welcoming without
-    # washing out the individual colors of the placed pieces.
-    var dominant: Color = _theme_color
-    var warm_tint: Color = dominant.lerp(Color("#FF9A45"), 0.38)
-    var deep_warm: Color = dominant.darkened(0.58).lerp(Color("#512719"), 0.42)
+    # Fixed cocoa-brown recessed cells and a muted taupe frame, as in the reference.
+    # Tile hue remains emerald; it no longer recolors the empty board.
     if _board_base_material != null:
-        _board_base_material.albedo_color = Color("#160D12").lerp(deep_warm, 0.48)
-        _board_base_material.emission_enabled = true
-        _board_base_material.emission = warm_tint.darkened(0.58)
-        _board_base_material.emission_energy_multiplier = 0.075
-        _board_base_material.roughness = 0.68
+        _board_base_material.albedo_color = Color("#8F8170")
+        _board_base_material.emission_enabled = false
+        _board_base_material.roughness = 0.78
     if _board_floor_material != null:
-        _board_floor_material.albedo_color = Color("#24151A").lerp(dominant.darkened(0.62).lerp(Color("#63351F"), 0.34), 0.42)
-        _board_floor_material.emission_enabled = true
-        _board_floor_material.emission = warm_tint.darkened(0.72)
-        _board_floor_material.emission_energy_multiplier = 0.025
-        _board_floor_material.roughness = 0.82
+        _board_floor_material.albedo_color = Color("#453A32")
+        _board_floor_material.emission_enabled = false
+        _board_floor_material.roughness = 0.88
     if _board_wall_material != null:
-        _board_wall_material.albedo_color = Color("#A95432").lerp(warm_tint.lightened(0.12), 0.46)
-        _board_wall_material.emission_enabled = true
-        _board_wall_material.emission = warm_tint.lightened(0.16)
-        _board_wall_material.emission_energy_multiplier = 0.22
-        _board_wall_material.roughness = 0.48
+        _board_wall_material.albedo_color = Color("#2D241F")
+        _board_wall_material.emission_enabled = false
+        _board_wall_material.roughness = 0.72
 
 func _update_drag_preview(ghost_origin: Vector2i) -> void:
     if _viewport == null or _models_root == null or selected < 0 or selected >= pieces.size():
@@ -397,7 +387,7 @@ func _update_drag_preview(ghost_origin: Vector2i) -> void:
     var valid := _can_place(pieces[selected], ghost_origin)
     var preview_color: Color = piece_colors[selected] if valid else Color("#FF536B")
     var world_per_pixel := 40.0 / float(maxi(1, _viewport.size.y))
-    var block_world := cell * world_per_pixel * 0.78 * 0.90
+    var block_world := cell * world_per_pixel * 0.93 * 0.90
     # Keep the snapped placement target, but carry the preview continuously
     # under the finger between cell centers (1:1 sub-cell movement).
     var finger_cell_center := board_origin + Vector2(
@@ -545,7 +535,7 @@ func _sync_3d_models() -> void:
             minp.y = mini(minp.y, c.y)
             maxp.x = maxi(maxp.x, c.x)
             maxp.y = maxi(maxp.y, c.y)
-        var unit := minf(20.0, 66.0 / float(maxi(maxp.x - minp.x + 1, maxp.y - minp.y + 1)))
+        var unit := minf(cell * 0.44, 140.0 / float(maxi(maxp.x - minp.x + 1, maxp.y - minp.y + 1)))
         var center := Vector2(w * (float(i) + 0.5) / 3.0, tray_y + 55)
         var origin := center - Vector2((maxp.x - minp.x + 1) * unit, (maxp.y - minp.y + 1) * unit) * 0.5
         for c in shape:
