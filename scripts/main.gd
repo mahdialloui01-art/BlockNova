@@ -693,7 +693,7 @@ func _draw_logo_board(center: Vector2) -> void:
 func _draw_settings() -> void:
 	var w := size.x
 	var h := size.y
-	_draw_text("SETTINGS",Vector2(0,h*0.20),31,Color("#F3F6FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("SETTINGS",Vector2(0,h*0.20),31,Color("#FFF9EF"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_text("MAKE THE EXPERIENCE YOURS",Vector2(0,h*0.235),11,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,310),Color("#141F39"),24)
 	_draw_text("HAPTIC FEEDBACK",Vector2(w*0.14,h*0.355),14,Color("#C7D2EA"))
@@ -775,8 +775,8 @@ func _dominant_board_color() -> Color:
 func _draw_background() -> void:
 	# Cocoa remains the foundation; the dominant jewel tone now visibly tints the whole scene.
 	var accent := _theme_color
-	var warm_top := Color("#C98B58")
-	var warm_bottom := Color("#684638")
+	var warm_top := Color("#DDA06B")
+	var warm_bottom := Color("#79513D")
 	var top_color := warm_top.lerp(accent.darkened(0.22), 0.24)
 	var bottom_color := warm_bottom.lerp(accent.darkened(0.38), 0.30)
 	var bands := 96
