@@ -57,9 +57,9 @@ func _run_tests() -> void:
         return
     var music_player := game.get("_music_player") as AudioStreamPlayer
     var music_stream := music_player.stream as AudioStreamWAV if music_player != null else null
-    if not _check(music_stream != null and music_stream.mix_rate == 24000, "Background music must use the mobile-optimized 24 kHz sample rate"):
+    if not _check(music_stream != null and music_stream.mix_rate == 48000, "Background music must use clean 48 kHz mobile playback"):
         return
-    if not _check(music_stream.data.size() == 24000 * 8 * 4, "Background music must remain an 8-second stereo loop"):
+    if not _check(music_stream.data.size() == 48000 * 10 * 4, "Background music must remain a 10-second stereo loop"):
         return
 
     var home_ui := game.get("home_ui") as CanvasLayer
