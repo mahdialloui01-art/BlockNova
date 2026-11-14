@@ -430,7 +430,14 @@ func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[
         if cleared_cells.has(coordinate):
             continue
         _spawn_tile_effect(coordinate, placed_color, false)
-    for coordinate in cleared_cells:
+    # Avoid a burst of dozens of independent 3D nodes/tweens when
+    # several rows and columns clear together. The board clears immediately;
+    # a small, evenly distributed set of flashes keeps the feedback vivid
+    # without a frame hitch on mid-range Android devices.
+    var flash_count := mini(cleared_cells.size(), 6)
+    for i in range(flash_count):
+        var sample_index := int(round(float(i) * float(cleared_cells.size() - 1) / float(maxi(1, flash_count - 1))))
+        var coordinate: Vector2i = cleared_cells[sample_index]
         var cleared_color_index := int(_last_cleared_colors.get(coordinate, placed_color_index))
         var cleared_color: Color = COLORS[clampi(cleared_color_index, 0, COLORS.size() - 1)]
         _spawn_tile_effect(coordinate, cleared_color, true)
