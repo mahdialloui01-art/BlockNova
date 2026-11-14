@@ -473,7 +473,9 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
     _effects_root.add_child(effect)
     _active_visual_effects += 1
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-    if not is_clear:
+    if is_clear:
+        _spawn_clear_debris(center, color, block_world)
+    else:
         _spawn_placement_ripple(center, color)
     var tween := create_tween()
     if is_clear:
@@ -491,6 +493,44 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
         tween.tween_property(effect, "scale", target_scale, 0.08)
         tween.tween_callback(effect.queue_free)
     tween.finished.connect(_on_visual_effect_finished)
+
+
+func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: float) -> void:
+    # Two small beveled 3D fragments per sampled cleared tile.
+    # The hard cap in _on_placement_resolved keeps this burst inexpensive on Android.
+    if _effects_root == null or _viewport == null or _block_mesh == null:
+        return
+    var origin := _screen_to_board_plane(screen_center) + Vector3(0, block_world * 0.96 + 0.035, 0)
+    for i in range(2):
+        var shard := MeshInstance3D.new()
+        shard.name = "LineClear3DShard"
+        shard.mesh = _block_mesh
+        var shard_material := (_material_for(color).duplicate() as StandardMaterial3D)
+        shard_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        shard_material.albedo_color = Color(color.r, color.g, color.b, 0.98)
+        shard_material.emission_enabled = true
+        shard_material.emission_energy_multiplier = 1.15
+        shard.material_override = shard_material
+        shard.position = origin
+        var shard_size := block_world * (0.19 if i == 0 else 0.14)
+        shard.scale = Vector3.ONE * shard_size
+        shard.rotation = Vector3(randf_range(-0.35, 0.35), randf_range(-0.6, 0.6), randf_range(-0.35, 0.35))
+        shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        _effects_root.add_child(shard)
+        _active_visual_effects += 1
+        var angle := randf_range(0.0, TAU)
+        var travel := block_world * randf_range(0.65, 1.15)
+        var target := origin + Vector3(cos(angle) * travel, block_world * randf_range(0.45, 0.9), sin(angle) * travel)
+        var burst := create_tween()
+        burst.set_parallel(true)
+        burst.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+        burst.tween_property(shard, "position", target, 0.34)
+        burst.tween_property(shard, "rotation", shard.rotation + Vector3(1.8, 2.4, 1.5), 0.34)
+        burst.tween_property(shard, "scale", Vector3.ZERO, 0.34)
+        burst.tween_property(shard_material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.34)
+        burst.tween_property(shard_material, "emission_energy_multiplier", 0.0, 0.34)
+        burst.chain().tween_callback(shard.queue_free)
+        burst.finished.connect(_on_visual_effect_finished)
 
 func _on_combo_triggered(level: int, lines: int) -> void:
     if _effects_root == null or _viewport == null:
