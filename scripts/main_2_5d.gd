@@ -479,7 +479,9 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> M
         effect.material_override = fade_material
         effect.scale = target_scale
     else:
-        effect.material_override = _material_for(color)
+        var pop_material := (_material_for(color).duplicate() as StandardMaterial3D)
+        pop_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        effect.material_override = pop_material
         effect.scale = target_scale * 0.42
     effect.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     _effects_root.add_child(effect)
