@@ -1,6 +1,6 @@
 extends Node3D
 
-const GRID := 8
+const GRID := 10
 const CELL := 1.0
 const BOARD_Z := -1.8
 const TRAY_Z := 6.1
@@ -72,7 +72,7 @@ func _build_world() -> void:
  camera_3d = Camera3D.new()
  camera_3d.name = "Main3DCamera"
  camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
- camera_3d.size = 15.5
+ camera_3d.size = 20.5
  add_child(camera_3d)
  # IMPORTANT: set the camera transform only after it enters the SceneTree.
  # look_at() before add_child() can leave a newly-created camera with its default
@@ -263,15 +263,16 @@ func _rebuild_3d() -> void:
   return
  var board_base := MeshInstance3D.new()
  var base_mesh := BoxMesh.new()
- base_mesh.size = Vector3(8.35,0.28,8.35)
+ base_mesh.size = Vector3(GRID * CELL + 0.35,0.28,GRID * CELL + 0.35)
  board_base.mesh = base_mesh
  board_base.material_override = _mat(Color("#101D35"))
  board_base.position = Vector3(0,-0.19,BOARD_Z)
  world_blocks.add_child(board_base)
  for y in range(GRID):
   for x in range(GRID):
-   var wx := (float(x)-3.5)*CELL
-   var wz := BOARD_Z+(float(y)-3.5)*CELL
+   var board_center_offset := (float(GRID) - 1.0) * 0.5
+   var wx := (float(x)-board_center_offset)*CELL
+   var wz := BOARD_Z+(float(y)-board_center_offset)*CELL
    _cube(world_blocks, Vector3(wx,-0.015,wz), Color("#263957"), Vector3(0.94,0.12,0.94), "BoardCell")
    var ci := int(board[y][x])
    if ci >= 0 and ci < COLORS.size():
@@ -292,7 +293,7 @@ func _rebuild_3d() -> void:
   var valid := _can_place(pieces[selected],at)
   var ghost_color: Color = piece_colors[selected] if valid else Color("#FF536B")
   for c in pieces[selected]:
-   _cube(world_blocks, Vector3((float(at.x+c.x)-3.5)*CELL,0.50,BOARD_Z+(float(at.y+c.y)-3.5)*CELL), ghost_color, Vector3(0.88,0.94,0.88), "DragPreview")
+   _cube(world_blocks, Vector3((float(at.x+c.x)-board_center_offset)*CELL,0.50,BOARD_Z+(float(at.y+c.y)-board_center_offset)*CELL), ghost_color, Vector3(0.88,0.94,0.88), "DragPreview")
 
 func _shape_bounds(shape: Array) -> Vector2i:
  var mx := 0
@@ -311,7 +312,7 @@ func _screen_to_plane(screen_pos: Vector2) -> Vector3:
  return origin+direction*t
 
 func _world_to_cell(p: Vector3) -> Vector2i:
- return Vector2i(floori(p.x+4.0),floori(p.z-BOARD_Z+4.0))
+ return Vector2i(floori(p.x + GRID * CELL * 0.5),floori(p.z - BOARD_Z + GRID * CELL * 0.5))
 
 func _can_place(shape: Array, at: Vector2i) -> bool:
  for c in shape:
@@ -410,7 +411,7 @@ func _input(event: InputEvent) -> void:
 
 func _touch_down(pos: Vector2) -> void:
  var p := _screen_to_plane(pos)
- if absf(p.x) < 5.8 and p.z > TRAY_Z-2.8 and p.z < TRAY_Z+2.8:
+ if absf(p.x) < GRID * CELL * 0.5 + 0.8 and p.z > TRAY_Z-2.8 and p.z < TRAY_Z+2.8:
   var best_dist := 999.0
   var best_index := -1
   for i in range(3):
@@ -441,7 +442,8 @@ func _touch_up(pos: Vector2) -> void:
   return
  pointer_world = _screen_to_plane(pos)
  var p := pointer_world
- if p.x >= -4.2 and p.x < 4.2 and p.z >= BOARD_Z-4.2 and p.z < BOARD_Z+4.2:
+ var board_half := GRID * CELL * 0.5 + 0.2
+  if p.x >= -board_half and p.x < board_half and p.z >= BOARD_Z-board_half and p.z < BOARD_Z+board_half:
   _try_place(_world_to_cell(p))
  dragging = false
  selected = -1
