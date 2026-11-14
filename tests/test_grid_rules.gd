@@ -7,6 +7,12 @@ func _run_tests() -> void:
     var main_scene := load("res://scenes/main.tscn") as PackedScene
     if not _check(main_scene != null, "The active Android scene must load"):
         return
+    var rules_script := load("res://scripts/main.gd") as GDScript
+    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 8, "Shared gameplay rules must use an 8x8 board"):
+        return
+    var alternate_3d_script := load("res://scripts/main_3d.gd") as GDScript
+    if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 8, "Alternate 3D mode must also use an 8x8 board"):
+        return
     var game := main_scene.instantiate() as Control
     if not _check(game != null and game.get_script().resource_path == "res://scripts/main_2_5d.gd", "Regression tests must instantiate the active 2.5D scene"):
         return
