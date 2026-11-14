@@ -758,7 +758,7 @@ func _draw_background() -> void:
 	draw_circle(Vector2(size.x * 0.08, size.y * 0.22), size.x * 0.62, Color(gold_glow.r, gold_glow.g, gold_glow.b, 0.105))
 	draw_circle(Vector2(size.x * 0.92, size.y * 0.72), size.x * 0.66, Color(copper_glow.r, copper_glow.g, copper_glow.b, 0.095))
 	draw_circle(Vector2(size.x * 0.52, size.y * 0.48), size.x * 0.42, Color(tint.r, tint.g, tint.b, 0.045))
-	draw_circle(Vector2(size.x * 0.50, size.y * 0.88), size.x * 0.48, Color("#FFC06A").r, Color("#FFC06A").g, Color("#FFC06A").b, 0.045)
+	draw_circle(Vector2(size.x * 0.50, size.y * 0.88), size.x * 0.48, Color(1.0, 0.75, 0.42, 0.045))
 	# Tiny amber particles and a warm highlight line reinforce the premium glow.
 	for i in range(42):
 		var px := fmod(float(i) * 83.0 + 23.0, size.x)
