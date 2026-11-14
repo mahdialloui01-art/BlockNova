@@ -461,7 +461,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
     _active_visual_effects += 1
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     if not is_clear:
-        _spawn_placement_ripple(center, color, block_world)
+        _spawn_placement_ripple(center, color)
     var tween := create_tween()
     if is_clear:
         var material := effect.material_override as StandardMaterial3D
@@ -479,7 +479,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> v
         tween.tween_callback(effect.queue_free)
     tween.finished.connect(_on_visual_effect_finished)
 
-func _spawn_placement_ripple(screen_center: Vector2, color: Color, block_world: float) -> void:
+func _spawn_placement_ripple(screen_center: Vector2, color: Color) -> void:
     # A bright expanding ring gives every newly placed cube a clear impact cue.
     # The ring is a real 3D mesh, so it stays aligned with the recessed board.
     if _effects_root == null or _viewport == null:
