@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 8
+const GRID := 10
 # Contemporary luminous palette: cyan, ultraviolet, magenta, amber, mint and coral.
 const COLORS := [
 	Color("#27DDF2"), Color("#8B6CFF"), Color("#FF62B5"),
@@ -453,6 +453,23 @@ func _valid_saved_board(value: Variant) -> bool:
 				return false
 	return true
 
+func _expand_legacy_board(value: Variant) -> Variant:
+	if not (value is Array) or value.size() != 8:
+		return value
+	for row in value:
+		if not (row is Array) or row.size() != 8:
+			return value
+	var expanded: Array = []
+	for y in range(GRID):
+		var expanded_row: Array = []
+		for x in range(GRID):
+			expanded_row.append(-1)
+		expanded.append(expanded_row)
+	for y in range(8):
+		for x in range(8):
+			expanded[y + 1][x + 1] = value[y][x]
+	return expanded
+
 func _valid_saved_pieces(value: Variant) -> bool:
 	if not (value is Array) or value.size() != 3:
 		return false
@@ -501,6 +518,9 @@ func _restore_saved_session() -> bool:
 	if not _has_saved_session() or int(config.get_value("session", "version", 0)) != 1:
 		return false
 	var saved_board: Variant = config.get_value("session", "board", [])
+	# Preserve an in-progress 8x8 session from older installs by centering it
+	# inside the new 10x10 board. The extra border starts empty.
+	saved_board = _expand_legacy_board(saved_board)
 	var saved_pieces: Variant = config.get_value("session", "pieces", [])
 	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
 	if not _valid_saved_board(saved_board) or not _valid_saved_pieces(saved_pieces):
@@ -582,7 +602,7 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	# On the compact 8x8 board, a random tray can occasionally contain only
+	# On the 10x10 board, a random tray can occasionally contain only
 	# shapes that do not fit even though empty cells remain. Reroll the tray
 	# before declaring game over; this keeps difficulty fair without changing
 	# the seeded daily-challenge sequence for a given run.
