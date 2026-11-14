@@ -122,9 +122,9 @@ func _run_tests() -> void:
     game.call("_try_place", Vector2i(9, 9))
     var actual_cleared_cells: Array = game.get("_last_cleared_cells")
     var actual_cleared_colors: Dictionary = game.get("_last_cleared_colors")
-    if not _check(actual_cleared_cells.size() == 15 and actual_cleared_colors.size() == 15, "Simultaneous row and column clearing must capture each unique cell and its color"):
+    if not _check(actual_cleared_cells.size() == 19 and actual_cleared_colors.size() == 19, "Simultaneous row and column clearing must capture each unique cell and its color"):
         return
-    if not _check(int(game.get("_active_visual_effects")) == 15, "Every cleared tile must receive one short visual fade"):
+    if not _check(int(game.get("_active_visual_effects")) == 19, "Every cleared tile must receive one short visual fade"):
         return
     await create_timer(0.35).timeout
     await process_frame
@@ -193,7 +193,7 @@ func _run_tests() -> void:
     if not _check(not bool(game.call("_has_saved_session")) and not resume_button.visible, "Clearing a session must hide the resume action"):
         return
 
-    # An older 8x8 save is migrated into the center of the new 10x10 board.
+    # An older 8x8 save is centered inside the current 10x10 board.
     var legacy_board: Array = []
     for y in range(8):
         var legacy_row: Array = []
@@ -209,7 +209,7 @@ func _run_tests() -> void:
     if not _check(bool(game.call("_restore_saved_session")), "A valid legacy 8x8 session must migrate instead of being discarded"):
         return
     var migrated_board: Array = game.get("board")
-    if not _check(migrated_board.size() == 10 and migrated_board[4].size() == 10, "Legacy sessions must expand to a 10x10 board"):
+    if not _check(migrated_board.size() == 10 and migrated_board[0].size() == 10, "Legacy sessions must expand to a 10x10 board"):
         return
     if not _check(int(migrated_board[4][5]) == 2, "Legacy board contents must stay centered during migration"):
         return
