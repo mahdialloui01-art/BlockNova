@@ -182,9 +182,15 @@ func _play_combo_voice(level: int) -> void:
 	# Use the device's native TTS engine so no copyrighted voice recording is bundled.
 	if level != 3 or not sound_enabled:
 		return
-	if DisplayServer.tts_get_voices().is_empty():
+	var voices := DisplayServer.tts_get_voices_for_language("en")
+	if voices.is_empty():
+		var available_voices := DisplayServer.tts_get_voices()
+		if available_voices.is_empty():
+			return
+		voices.append(str(available_voices[0].get("id", "")))
+	if voices[0].is_empty():
 		return
-	DisplayServer.tts_speak("Good!", "", 1.0, 1.12, 1.08, 303, true)
+	DisplayServer.tts_speak("Good!", voices[0], 96, 1.12, 0.94, 303, true)
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
