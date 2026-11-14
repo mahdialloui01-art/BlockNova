@@ -83,12 +83,12 @@ func _setup_audio() -> void:
 func _make_music_stream() -> AudioStreamWAV:
 	# Original Modern Hybrid Cinematic score: an 8-second stereo loop with
 	# warm Dm9/Bbmaj7/Fadd9/Cadd9 pads, felt-piano plucks, sub-bass and glass air.
-	# Synthesized locally at 24 kHz to reduce mobile startup CPU and memory.
-	const sample_rate := 24000
-	const duration := 8.0
-	const bar_duration := 2.0
+	# Synthesized as clean 48 kHz / 16-bit stereo audio for modern mobile playback.
+	const sample_rate := 48000
+	const duration := 10.0
+	const bar_duration := 2.5
 	const sample_count := int(sample_rate * duration)
-	const crossfade_seconds := 0.24
+	const crossfade_seconds := 0.30
 	const crossfade_frames := int(sample_rate * crossfade_seconds)
 	var progression := [
 		[146.83, 174.61, 220.00, 261.63, 329.63],
@@ -120,7 +120,7 @@ func _make_music_stream() -> AudioStreamWAV:
 				pad_previous += sin(TAU * previous_frequency * 1.0017 * t + 0.17) * 0.008
 				pad_previous += sin(TAU * previous_frequency * 2.002 * t) * 0.0022
 		var chord_blend := smoothstep(0.0, crossfade_seconds, local_bar)
-		var breathing := 0.88 + 0.12 * sin(TAU * 0.055 * t)
+		var breathing := 0.91 + 0.09 * sin(TAU * 0.055 * t)
 		var pad := lerpf(pad_previous, pad_current, chord_blend) * breathing
 		var bass_t := fmod(local_bar, 1.0)
 		var bass_frequency := float(bass_roots[bar])
@@ -136,7 +136,7 @@ func _make_music_stream() -> AudioStreamWAV:
 		# Slow stereo shimmer supplies width while leaving the bass firmly centered.
 		var motion := sin(TAU * 0.032 * t)
 		var air_phase := TAU * 1046.5 * t + 0.34 * sin(TAU * 0.071 * t)
-		var air := (sin(air_phase) + 0.42 * sin(air_phase * 1.498)) * 0.0065
+		var air := (sin(air_phase) + 0.42 * sin(air_phase * 1.498) + 0.18 * sin(air_phase * 2.01)) * 0.008
 		var left_sample := pad * 0.82 + bass * 0.76 + pluck * (0.82 + motion * 0.12) + air * (0.78 + motion * 0.22)
 		var right_sample := pad * 0.82 + bass * 0.76 + pluck * (0.82 - motion * 0.12) + air * (0.78 - motion * 0.22)
 		# Gentle saturation rounds peaks without audible hard clipping.
@@ -694,23 +694,26 @@ func _draw_game() -> void:
 	var h := size.y
 	_draw_text("BLOCK NOVA",Vector2(0,h*0.075),27,Color("#F3F6FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_text("DAILY CHALLENGE  •  "+daily_date_key if daily_mode else "PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_panel(Rect2(22,h*0.135,w-44,72),Color("#141F39"),18)
-	_draw_text("SCORE",Vector2(42,h*0.166),11,Color("#91A4C8"))
-	_draw_text(str(score),Vector2(42,h*0.205),25,Color("#F3F6FF"))
+	_draw_panel(Rect2(22,h*0.132,w-44,86),Color("#211D36"),20)
+	_draw_text("SCORE",Vector2(42,h*0.162),14,Color("#B9C8E8"))
+	_draw_text(str(score),Vector2(42,h*0.218),37,Color("#FFF8E8"))
 	var visible_best: int = max(daily_best, score) if daily_mode else max(best, score)
 	var best_label := "DAY BEST  " if daily_mode else "BEST  "
-	_draw_text(best_label+str(visible_best),Vector2(w-190,h*0.19),15,Color("#F5D77B"))
+	_draw_text(best_label+str(visible_best),Vector2(w-205,h*0.194),16,Color("#FFE08A"))
 	if combo_streak > 0:
-		_draw_text("COMBO x"+str(combo_streak),Vector2(w*0.43,h*0.205),13,Color("#32E6D1"))
+		_draw_panel(Rect2(w*0.405,h*0.151,w*0.245,57),Color("#173E49"),15)
+		_draw_text("COMBO",Vector2(w*0.405,h*0.176),12,Color("#A8F8EE"),HORIZONTAL_ALIGNMENT_CENTER,w*0.245)
+		_draw_text("x"+str(combo_streak),Vector2(w*0.405,h*0.211),25,Color("#66FFF0"),HORIZONTAL_ALIGNMENT_CENTER,w*0.245)
 	if combo_popup_time > 0.0 and combo_popup_level > 0:
-		var pop_progress := 1.0 - combo_popup_time / 1.15
-		var pop_alpha := minf(1.0, combo_popup_time * 3.2)
-		var pop_scale := 1.0 + 0.18 * sin(minf(pop_progress * 3.0, 1.0) * PI)
+		var pop_progress := 1.0 - combo_popup_time / 2.0
+		var pop_alpha := minf(1.0, combo_popup_time * 2.8)
+		var pop_scale := 1.0 + 0.28 * sin(minf(pop_progress * 2.4, 1.0) * PI)
 		var pop_text := "COMBO x%d  •  %s" % [combo_popup_level, "UNSTOPPABLE!" if combo_popup_level >= 5 else ("ON FIRE!" if combo_popup_level >= 3 else "NICE CHAIN!")]
-		var pop_size := int(22.0 * pop_scale)
-		var pop_y := board_origin.y + board_size * 0.5 - 16.0 - pop_progress * 42.0
-		draw_string(font, Vector2(2, pop_y + 3), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size, Color(0.04, 0.02, 0.10, pop_alpha * 0.85))
-		draw_string(font, Vector2(0, pop_y), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size, Color(1.0, 0.91, 0.48, pop_alpha))
+		var pop_size := int(34.0 * pop_scale)
+		var pop_y := board_origin.y + board_size * 0.5 - 12.0 - pop_progress * 58.0
+		draw_string(font, Vector2(3, pop_y + 5), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size + 2, Color(0.02, 0.01, 0.08, pop_alpha * 0.95))
+		draw_string(font, Vector2(0, pop_y), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size, Color(1.0, 0.98, 0.82, pop_alpha))
+		draw_string(font, Vector2(0, pop_y - 2), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size, Color(1.0, 0.72, 0.24, pop_alpha * 0.45))
 	_draw_button(Rect2(w-65,18,44,38),"Ⅱ",Color("#805BFF"))
 	_draw_text("YOUR BOARD",Vector2(board_origin.x,board_origin.y-24),12,Color("#34DDF0"))
 	_draw_text("CHOOSE A SHAPE",Vector2(0,tray_y-26),12,Color("#A8B6D4"),HORIZONTAL_ALIGNMENT_CENTER,w)
@@ -1001,7 +1004,7 @@ func _try_place(at: Vector2i) -> void:
 		if combo_streak > 1:
 			score += cleared * 25 * (combo_streak - 1)
 		combo_popup_level = combo_streak
-		combo_popup_time = 1.15
+		combo_popup_time = 2.0
 		_on_combo_triggered(combo_streak, cleared)
 	else:
 		combo_streak = 0
