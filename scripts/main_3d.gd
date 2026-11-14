@@ -1,6 +1,6 @@
 extends Node3D
 
-const GRID := 8
+const GRID := 10
 const CELL := 1.0
 const BOARD_Z := -1.8
 const TRAY_Z := 6.1
@@ -443,7 +443,7 @@ func _touch_up(pos: Vector2) -> void:
  pointer_world = _screen_to_plane(pos)
  var p := pointer_world
  var board_half := GRID * CELL * 0.5 + 0.2
-  if p.x >= -board_half and p.x < board_half and p.z >= BOARD_Z-board_half and p.z < BOARD_Z+board_half:
+ if p.x >= -board_half and p.x < board_half and p.z >= BOARD_Z-board_half and p.z < BOARD_Z+board_half:
   _try_place(_world_to_cell(p))
  dragging = false
  selected = -1
