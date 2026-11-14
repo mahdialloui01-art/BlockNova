@@ -16,6 +16,12 @@ func _run_tests() -> void:
         return
     if not _check(game.get("_block_mesh") is Mesh, "The active scene must build its rounded 3D block mesh"):
         return
+    var music_player := game.get("_music_player") as AudioStreamPlayer
+    var music_stream := music_player.stream as AudioStreamWAV if music_player != null else null
+    if not _check(music_stream != null and music_stream.mix_rate == 24000, "Background music must use the mobile-optimized 24 kHz sample rate"):
+        return
+    if not _check(music_stream.data.size() == 24000 * 8 * 4, "Background music must remain an 8-second stereo loop"):
+        return
 
     var home_ui := game.get("home_ui") as CanvasLayer
     if not _check(home_ui != null and home_ui.has_signal("daily_challenge_requested"), "Home screen must expose the daily challenge action"):
