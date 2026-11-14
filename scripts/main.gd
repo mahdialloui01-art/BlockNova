@@ -76,14 +76,14 @@ func _setup_audio() -> void:
 	_update_music_state()
 
 func _make_music_stream() -> AudioStreamWAV:
-	# Original Modern Hybrid Cinematic score: a 12-second stereo loop with
+	# Original Modern Hybrid Cinematic score: an 8-second stereo loop with
 	# warm Dm9/Bbmaj7/Fadd9/Cadd9 pads, felt-piano plucks, sub-bass and glass air.
-	# Synthesized locally at 48 kHz; no external samples or third-party music.
-	const sample_rate := 48000
-	const duration := 12.0
-	const bar_duration := 3.0
+	# Synthesized locally at 24 kHz to reduce mobile startup CPU and memory.
+	const sample_rate := 24000
+	const duration := 8.0
+	const bar_duration := 2.0
 	const sample_count := int(sample_rate * duration)
-	const crossfade_seconds := 0.36
+	const crossfade_seconds := 0.24
 	const crossfade_frames := int(sample_rate * crossfade_seconds)
 	var progression := [
 		[146.83, 174.61, 220.00, 261.63, 329.63],
@@ -117,14 +117,14 @@ func _make_music_stream() -> AudioStreamWAV:
 		var chord_blend := smoothstep(0.0, crossfade_seconds, local_bar)
 		var breathing := 0.88 + 0.12 * sin(TAU * 0.055 * t)
 		var pad := lerpf(pad_previous, pad_current, chord_blend) * breathing
-		var bass_t := fmod(local_bar, 1.5)
+		var bass_t := fmod(local_bar, 1.0)
 		var bass_frequency := float(bass_roots[bar])
 		var bass_envelope := exp(-3.8 * bass_t) * (1.0 - exp(-bass_t * 45.0))
 		var bass := sin(TAU * bass_frequency * bass_t) * bass_envelope * 0.105
-		var beat_t := fmod(local_bar, 0.75)
-		var beat_index := mini(int(local_bar / 0.75), 3)
+		var beat_t := fmod(local_bar, 0.5)
+		var beat_index := mini(int(local_bar / 0.5), 3)
 		var pluck := 0.0
-		if beat_t < 0.48:
+		if beat_t < 0.32:
 			var pluck_frequency := float(chord[beat_index]) * 2.0
 			pluck = _piano_voice(pluck_frequency, beat_t, 0.16)
 			pluck += _modern_pluck(pluck_frequency * 1.5, beat_t, 0.13, 5.6)
