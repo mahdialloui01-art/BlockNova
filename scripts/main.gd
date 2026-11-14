@@ -731,7 +731,7 @@ func _dominant_board_color() -> Color:
 			for i in range(COLORS.size()):
 				if value is Color and value.is_equal_approx(COLORS[i]):
 					counts[i] += 1
-	var highest := counts.max()
+	var highest: int = int(counts.max())
 	var candidates: Array[int] = []
 	for i in range(counts.size()):
 		if counts[i] == highest:
