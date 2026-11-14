@@ -1,5 +1,7 @@
 extends "res://scripts/main.gd"
 
+const ENERGY_HIT_VFX: PackedScene = preload("res://fx/energy_hit/energy_hit.tscn")
+
 var _overlay_layer: CanvasLayer
 var _viewport_container: SubViewportContainer
 var _viewport: SubViewport
@@ -436,6 +438,8 @@ func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[
         if cleared_cells.has(coordinate):
             continue
         _spawn_tile_effect(coordinate, placed_color, false)
+    if not placed_cells.is_empty():
+        _spawn_asset_vfx(_average_cell_center(placed_cells), 0.34)
     # Avoid a burst of dozens of independent 3D nodes/tweens when
     # several rows and columns clear together. The board clears immediately;
     # a small, evenly distributed set of flashes keeps the feedback vivid
@@ -447,6 +451,8 @@ func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[
         var cleared_color_index := int(_last_cleared_colors.get(coordinate, placed_color_index))
         var cleared_color: Color = COLORS[clampi(cleared_color_index, 0, COLORS.size() - 1)]
         _spawn_tile_effect(coordinate, cleared_color, true)
+    if not cleared_cells.is_empty():
+        _spawn_asset_vfx(_average_cell_center(cleared_cells), 0.48)
 
 func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool) -> void:
     if _effects_root == null or _viewport == null or _block_mesh == null:
@@ -528,12 +534,37 @@ func _spawn_clear_debris(screen_center: Vector2, color: Color, block_world: floa
 
 
 
+func _average_cell_center(coordinates: Array[Vector2i]) -> Vector2:
+    var average := Vector2.ZERO
+    for coordinate in coordinates:
+        average += Vector2(coordinate.x, coordinate.y)
+    average /= float(maxi(1, coordinates.size()))
+    return board_origin + Vector2((average.x + 0.5) * cell, (average.y + 0.5) * cell)
+
+
+func _spawn_asset_vfx(screen_center: Vector2, effect_scale: float) -> void:
+    if _effects_root == null or _viewport == null:
+        return
+    var effect := ENERGY_HIT_VFX.instantiate() as Node3D
+    if effect == null:
+        return
+    effect.name = "LicensedEnergyHitVFX"
+    effect.position = _screen_to_board_plane(screen_center) + Vector3(0, 0.24, 0)
+    effect.scale = Vector3.ONE * effect_scale
+    effect.tree_exited.connect(_on_visual_effect_finished)
+    _effects_root.add_child(effect)
+    _active_visual_effects += 1
+    _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+
+
 func _on_combo_triggered(level: int, lines: int) -> void:
     if _effects_root == null or _viewport == null:
         return
     var accent: Color = COLORS[posmod(level + lines, COLORS.size())]
     var board_center := board_origin + Vector2(board_size * 0.5, board_size * 0.5)
     _spawn_combo_ring(board_center, accent, 0.55, 0.52)
+    if level >= 3:
+        _spawn_asset_vfx(board_center, 0.54)
     if level >= 2:
         _spawn_combo_ring(board_center, Color("#FFE58A"), 0.82, 0.68)
     # Bright radial shards make the chain reward readable even on a busy board.

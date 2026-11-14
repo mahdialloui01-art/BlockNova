@@ -1,0 +1,174 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://fx/shared/fx.gd" id="fx"]
+[ext_resource type="Shader" path="res://fx/shared/arcs.gdshader" id="sh_arcs"]
+[ext_resource type="Shader" path="res://fx/shared/flash.gdshader" id="sh_flash"]
+[ext_resource type="Shader" path="res://fx/shared/plasma.gdshader" id="sh_plasma"]
+[ext_resource type="Shader" path="res://fx/shared/ring.gdshader" id="sh_ring"]
+[ext_resource type="Shader" path="res://fx/shared/spark.gdshader" id="sh_spark"]
+[ext_resource type="Shader" path="res://fx/shared/twinkle.gdshader" id="sh_twinkle"]
+
+[sub_resource type="ShaderMaterial" id="mat_glow"]
+render_priority = -1
+shader = ExtResource("sh_flash")
+shader_parameter/soft_distance = null
+shader_parameter/color = Color(0.1, 0.55, 1, 0.9)
+shader_parameter/ray_count = 0.0
+shader_parameter/core_size = 0.55
+
+[sub_resource type="QuadMesh" id="mesh_glow"]
+material = SubResource("mat_glow")
+size = Vector2(3, 3)
+
+[sub_resource type="ShaderMaterial" id="mat_ring"]
+render_priority = 0
+shader = ExtResource("sh_ring")
+shader_parameter/soft_distance = null
+shader_parameter/color = Color(0.25, 0.8, 1, 1)
+shader_parameter/thickness = 0.16
+shader_parameter/start_radius = 0.35
+
+[sub_resource type="QuadMesh" id="mesh_ring"]
+material = SubResource("mat_ring")
+size = Vector2(2.5, 2.5)
+
+[sub_resource type="ShaderMaterial" id="mat_plasma"]
+render_priority = 1
+shader = ExtResource("sh_plasma")
+shader_parameter/soft_distance = null
+shader_parameter/core = null
+shader_parameter/body = null
+shader_parameter/rim = null
+shader_parameter/lumpiness = null
+
+[sub_resource type="QuadMesh" id="mesh_plasma"]
+material = SubResource("mat_plasma")
+size = Vector2(2.5, 2.5)
+
+[sub_resource type="ShaderMaterial" id="mat_arcs"]
+render_priority = 2
+shader = ExtResource("sh_arcs")
+shader_parameter/soft_distance = null
+shader_parameter/color = null
+shader_parameter/count = null
+shader_parameter/width = null
+shader_parameter/flicker = null
+shader_parameter/inner_radius = null
+
+[sub_resource type="QuadMesh" id="mesh_arcs"]
+material = SubResource("mat_arcs")
+size = Vector2(2.9, 2.9)
+
+[sub_resource type="ShaderMaterial" id="mat_sparks"]
+render_priority = 2
+shader = ExtResource("sh_spark")
+shader_parameter/soft_distance = null
+shader_parameter/hot = Color(0.9, 1, 1, 1)
+shader_parameter/cool = Color(0.1, 0.5, 1, 1)
+shader_parameter/appear_at = null
+
+[sub_resource type="QuadMesh" id="mesh_sparks"]
+material = SubResource("mat_sparks")
+size = Vector2(0.04, 0.45)
+
+[sub_resource type="ShaderMaterial" id="mat_motes"]
+render_priority = 3
+shader = ExtResource("sh_twinkle")
+shader_parameter/soft_distance = null
+shader_parameter/color = Color(0.3, 0.85, 1, 1)
+
+[sub_resource type="QuadMesh" id="mesh_motes"]
+material = SubResource("mat_motes")
+size = Vector2(0.3, 0.3)
+
+[node name="EnergyHit" type="Node3D"]
+script = ExtResource("fx")
+
+[node name="Glow" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 1
+lifetime = 0.35
+one_shot = true
+preprocess = 0.016666666666666666
+explosiveness = 1.0
+visibility_aabb = AABB(-4, -4, -4, 8, 8, 8)
+mesh = SubResource("mesh_glow")
+gravity = Vector3(0, 0, 0)
+
+[node name="Ring" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 1
+lifetime = 0.55
+one_shot = true
+preprocess = 0.016666666666666666
+explosiveness = 1.0
+visibility_aabb = AABB(-4, -4, -4, 8, 8, 8)
+mesh = SubResource("mesh_ring")
+gravity = Vector3(0, 0, 0)
+
+[node name="Plasma" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 1
+lifetime = 0.42
+one_shot = true
+preprocess = 0.016666666666666666
+explosiveness = 1.0
+visibility_aabb = AABB(-4, -4, -4, 8, 8, 8)
+mesh = SubResource("mesh_plasma")
+gravity = Vector3(0, 0, 0)
+angle_max = 360.0
+
+[node name="Arcs" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 1
+lifetime = 0.4
+one_shot = true
+preprocess = 0.016666666666666666
+explosiveness = 1.0
+visibility_aabb = AABB(-4, -4, -4, 8, 8, 8)
+mesh = SubResource("mesh_arcs")
+gravity = Vector3(0, 0, 0)
+angle_max = 360.0
+
+[node name="Sparks" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 18
+lifetime = 0.35
+one_shot = true
+preprocess = 0.016666666666666666
+explosiveness = 1.0
+visibility_aabb = AABB(-4, -4, -4, 8, 8, 8)
+mesh = SubResource("mesh_sparks")
+particle_flag_align_y = true
+direction = Vector3(0, 1, 0)
+spread = 180.0
+gravity = Vector3(0, 0, 0)
+initial_velocity_min = 5.0
+initial_velocity_max = 11.0
+damping_min = 8.0
+damping_max = 12.0
+scale_amount_min = 0.6
+scale_amount_max = 1.2
+
+[node name="Motes" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 16
+lifetime = 0.7
+one_shot = true
+preprocess = 0.016666666666666666
+explosiveness = 1.0
+lifetime_randomness = 0.5
+visibility_aabb = AABB(-4, -4, -4, 8, 8, 8)
+mesh = SubResource("mesh_motes")
+emission_shape = 1
+emission_sphere_radius = 0.5
+direction = Vector3(0, 1, 0)
+spread = 180.0
+gravity = Vector3(0, 0.8, 0)
+initial_velocity_min = 1.5
+initial_velocity_max = 4.5
+damping_min = 3.0
+damping_max = 5.0
+angle_max = 90.0
+scale_amount_min = 0.5
+scale_amount_max = 1.3

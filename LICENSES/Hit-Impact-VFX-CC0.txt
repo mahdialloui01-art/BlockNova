@@ -1,0 +1,6 @@
+Godot 4 Hit & Impact VFX + SFX Free Sampler
+Author: SquigglyFish (squigglyfish.itch.io)
+License: CC0 1.0 Universal
+The source archive supplied for this project includes LICENSE.txt with the full CC0 legal text.
+Official license: https://creativecommons.org/publicdomain/zero/1.0/
+Adaptation in BlockNova: visual scenes and shaders only; audio nodes were omitted.
