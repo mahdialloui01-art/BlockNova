@@ -1,10 +1,11 @@
 extends Control
 
 const GRID := 8
-# Contemporary luminous palette: cyan, ultraviolet, magenta, amber, mint and coral.
+# Classic emerald block palette, matching the supplied visual reference.
+# A single consistent green keeps the board calm and the beveled cube faces readable.
 const COLORS := [
-	Color("#27DDF2"), Color("#8B6CFF"), Color("#FF62B5"),
-	Color("#FFC857"), Color("#35D6A5"), Color("#FF7968")
+	Color("#4BA85B"), Color("#4BA85B"), Color("#4BA85B"),
+	Color("#4BA85B"), Color("#4BA85B"), Color("#4BA85B")
 ]
 const SHAPES := [
 	[Vector2i(0,0)],
@@ -580,10 +581,11 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	var w := size.x
 	var h := size.y
-	board_size = minf(w * 0.78, h * 0.38)
+	# Match the reference: a broad, nearly square 8x8 board with generous cell size.
+	board_size = minf(w * 0.86, h * 0.39)
 	cell = board_size / GRID
-	board_origin = Vector2((w - board_size) * 0.5, h * 0.285)
-	tray_y = h * 0.77
+	board_origin = Vector2((w - board_size) * 0.5, h * 0.228)
+	tray_y = h * 0.70
 
 func _reset_game() -> void:
 	board.clear()
@@ -736,38 +738,21 @@ func _dominant_board_color() -> Color:
 	return COLORS[dominant_index]
 
 func _draw_background() -> void:
-	var menu_screen := screen == Screen.HOME or screen == Screen.SETTINGS
-	var tint := _theme_color
-	# Rich cocoa-to-amber atmosphere: warm base colors stay visible even when
-	# the dominant tile hue changes, while the hue adds a restrained accent.
-	var cocoa := Color("#28120F")
-	var amber := Color("#5A2B18")
-	var top_base := Color("#160C10") if not menu_screen else Color("#1D0D0D")
-	var bottom_base := Color("#35180F") if not menu_screen else Color("#47200F")
-	var warm_top := top_base.lerp(cocoa, 0.42)
-	var warm_bottom := bottom_base.lerp(amber, 0.38)
-	var top_color := warm_top.lerp(tint.darkened(0.72), 0.12)
-	var bottom_color := warm_bottom.lerp(tint.darkened(0.62), 0.16)
+	# Soft warm beige/taupe background from the visual reference.
+	# Keep the playfield bright and calm so the dark board and emerald tiles stand out.
+	var top_color := Color("#C7BBA9")
+	var bottom_color := Color("#B4A58F")
 	var bands := 96
 	for i in range(bands):
 		var t := float(i) / float(bands - 1)
 		draw_rect(Rect2(0, size.y * t, size.x, size.y / float(bands) + 2.0), top_color.lerp(bottom_color, t))
-	# Layered amber light pools create a stronger warm glow without flattening UI contrast.
-	var gold_glow := Color("#FF9B45")
-	var copper_glow := Color("#E56B32")
-	draw_circle(Vector2(size.x * 0.08, size.y * 0.22), size.x * 0.62, Color(gold_glow.r, gold_glow.g, gold_glow.b, 0.105))
-	draw_circle(Vector2(size.x * 0.92, size.y * 0.72), size.x * 0.66, Color(copper_glow.r, copper_glow.g, copper_glow.b, 0.095))
-	draw_circle(Vector2(size.x * 0.52, size.y * 0.48), size.x * 0.42, Color(tint.r, tint.g, tint.b, 0.045))
-	draw_circle(Vector2(size.x * 0.50, size.y * 0.88), size.x * 0.48, Color(1.0, 0.75, 0.42, 0.045))
-	# Tiny amber particles and a warm highlight line reinforce the premium glow.
-	for i in range(42):
+	# Very subtle warm light pools preserve depth without a strong neon glow.
+	draw_circle(Vector2(size.x * 0.12, size.y * 0.18), size.x * 0.58, Color(1.0, 0.91, 0.78, 0.055))
+	draw_circle(Vector2(size.x * 0.88, size.y * 0.76), size.x * 0.62, Color(0.78, 0.59, 0.39, 0.035))
+	for i in range(54):
 		var px := fmod(float(i) * 83.0 + 23.0, size.x)
 		var py := fmod(float(i) * 137.0 + 61.0, size.y)
-		var alpha := 0.22 if i % 3 == 0 else 0.10
-		var particle_color := Color("#FFB45E") if i % 2 == 0 else Color("#F07A3C")
-		draw_circle(Vector2(px, py), 1.35 if i % 4 == 0 else 0.85, Color(particle_color.r, particle_color.g, particle_color.b, alpha))
-	if not menu_screen:
-		draw_line(Vector2(size.x * 0.08, size.y * 0.12), Vector2(size.x * 0.92, size.y * 0.12), Color("#FFB45E"), 1.5, true)
+		draw_circle(Vector2(px, py), 0.8 if i % 4 == 0 else 0.45, Color(0.48, 0.39, 0.29, 0.055))
 
 func _draw_panel(rect: Rect2,color: Color,radius: float) -> void:
 	var shadow := StyleBoxFlat.new()
