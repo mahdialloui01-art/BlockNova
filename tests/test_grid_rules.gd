@@ -148,7 +148,24 @@ func _run_tests() -> void:
     if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i.ZERO), "Malformed board dimensions must be rejected safely"):
         return
 
-    # A completely filled board with a one-cell piece has no legal move.
+    # The 8x8 tray must not cause a false game-over when even one cell remains.
+    var almost_full_board := []
+    for y in range(8):
+        var row: Array = []
+        for x in range(8):
+            row.append(-1 if y == 0 and x == 0 else 0)
+        almost_full_board.append(row)
+    game.set("board", almost_full_board)
+    game.set("game_over", false)
+    var tray_rng := game.get("game_rng") as RandomNumberGenerator
+    tray_rng.seed = 8128
+    game.call("_new_pieces")
+    if not _check(bool(game.call("_any_move")) and not bool(game.get("game_over")), "Tray generation must preserve a legal one-cell move on an almost-full 8x8 board"):
+        return
+    if not _check(game.get("pieces")[0].size() == 1, "Almost-full board fallback must provide a one-cell piece"):
+        return
+
+    # A completely filled board has no legal move, even with the fallback piece.
     var blocked_board := []
     for y in range(8):
         var row: Array = []
@@ -159,8 +176,12 @@ func _run_tests() -> void:
     game.set("pieces", [[Vector2i(0, 0)], [], []])
     if not _check(not game.call("_any_move"), "A completely full board must report no legal moves"):
         return
+    game.set("game_over", false)
+    game.call("_new_pieces")
+    if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
+        return
 
-    print("PASS: 8x8 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, simultaneous line clear, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 8x8 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     game.free()
     quit(0)
 
