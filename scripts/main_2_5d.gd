@@ -373,7 +373,7 @@ func _update_drag_preview(ghost_origin: Vector2i) -> void:
         cube.material_override = _material_for(preview_color)
         found += 1
     if found > 0:
-        _viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+        _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _active_visual_effects > 0 else SubViewport.UPDATE_ONCE
 
 func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[Vector2i], placed_color_index: int) -> void:
     if _effects_root == null or _block_mesh == null or _viewport == null:
