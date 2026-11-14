@@ -245,9 +245,13 @@ func _add_center_glow(parent: Node3D, world_scale: float, color: Color) -> void:
     plane.size = Vector2(0.58, 0.58)
     glow.mesh = plane
     glow.material_override = _center_glow_material(color)
-    glow.scale = Vector3(world_scale, 1.0, world_scale)
-    # PlaneMesh lies in X/Y; rotate onto the cube's upward-facing X/Z surface.
-    glow.position = Vector3(0, world_scale * 0.505, 0)
+    # PlaneMesh is authored in local X/Y. Rotate its normal from +Z to +Y
+    # so the highlight lies flat on the cube's top face.
+    glow.rotation.x = -PI * 0.5
+    # The parent cube already carries world_scale; keep child transforms local
+    # to avoid applying the cube scale twice.
+    glow.scale = Vector3.ONE
+    glow.position = Vector3(0, 0.505, 0)
     glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(glow)
 
