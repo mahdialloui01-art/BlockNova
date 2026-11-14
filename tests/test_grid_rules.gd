@@ -8,10 +8,10 @@ func _run_tests() -> void:
     if not _check(main_scene != null, "The active Android scene must load"):
         return
     var rules_script := load("res://scripts/main.gd") as GDScript
-    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 8, "Shared gameplay rules must use a 10x10 board"):
+    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 10, "Shared gameplay rules must use a 10x10 board"):
         return
     var alternate_3d_script := load("res://scripts/main_3d.gd") as GDScript
-    if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 8, "Alternate 3D mode must also use a 10x10 board"):
+    if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 10, "Alternate 3D mode must also use a 10x10 board"):
         return
     var game := main_scene.instantiate() as Control
     if not _check(game != null and game.get_script().resource_path == "res://scripts/main_2_5d.gd", "Regression tests must instantiate the active 2.5D scene"):
@@ -92,10 +92,10 @@ func _run_tests() -> void:
     if not _check(preset_text.contains("permissions/vibrate=true"), "Android export must declare the VIBRATE permission"):
         return
     var initial_board: Array = game.get("board")
-    if not _check(initial_board.size() == 8, "New game must create exactly 10 rows"):
+    if not _check(initial_board.size() == 10, "New game must create exactly 10 rows"):
         return
     for row in initial_board:
-        if not _check(row is Array and row.size() == 8, "Every board row must contain exactly 10 cells"):
+        if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 10 cells"):
             return
 
     # Prepare a full bottom row and right column with one shared empty corner.
