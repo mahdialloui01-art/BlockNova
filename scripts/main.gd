@@ -1008,6 +1008,11 @@ func _try_place(at: Vector2i) -> void:
 		_save_session()
 	queue_redraw()
 
+func _on_placement_resolved(_placed_cells: Array[Vector2i], _cleared_cells: Array[Vector2i]) -> void:
+	# Rendering subclasses animate this event; keep the rules layer renderer-independent.
+	pass
+
+func _clear_lines() -> int:
 	_last_cleared_cells.clear()
 	if board.size() != GRID:
 		return 0
