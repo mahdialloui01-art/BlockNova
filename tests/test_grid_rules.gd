@@ -42,9 +42,9 @@ func _run_tests() -> void:
     game.set("_last_cleared_colors", {Vector2i(1, 0): 1})
     game.call("_on_placement_resolved", placed_visual_cells, cleared_visual_cells, 0)
     var effects_root := game.get("_effects_root") as Node3D
-    if not _check(effects_root.get_child_count() == 2, "Placement and line-clear feedback must create separate lightweight effects"):
+    if not _check(effects_root.get_child_count() == 3, "Placement pop, placement ripple, and line-clear feedback must create separate lightweight effects"):
         return
-    if not _check(int(game.get("_active_visual_effects")) == 2, "Both visual effects must be tracked while animating"):
+    if not _check(int(game.get("_active_visual_effects")) == 3, "All placement and line-clear visual effects must be tracked while animating"):
         return
     var effect_viewport := game.get("_viewport") as SubViewport
     if not _check(effect_viewport.render_target_update_mode == SubViewport.UPDATE_ALWAYS, "The 3D viewport must update only while transient effects animate"):
