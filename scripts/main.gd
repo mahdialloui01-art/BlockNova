@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 8
+const GRID := 10
 # Six distinct, vivid jewel tones with a warm premium balance.
 # Keep each index stable: saved boards store color indices, not Color values.
 const COLORS := [
@@ -494,20 +494,22 @@ func _valid_saved_board(value: Variant) -> bool:
 	return true
 
 func _expand_legacy_board(value: Variant) -> Variant:
-	# Older installs may have a 10x10 save. Keep its central 8x8 area
-	# when migrating to the required 8x8 gameplay board.
-	if not (value is Array) or value.size() != 10:
+	# Preserve older 8x8 sessions by centering them inside the 10x10 board.
+	if not (value is Array) or value.size() != 8:
 		return value
 	for row in value:
-		if not (row is Array) or row.size() != 10:
+		if not (row is Array) or row.size() != 8:
 			return value
-	var cropped: Array = []
-	for y in range(1, 9):
-		var cropped_row: Array = []
-		for x in range(1, 9):
-			cropped_row.append(value[y][x])
-		cropped.append(cropped_row)
-	return cropped
+	var expanded: Array = []
+	for y in range(GRID):
+		var expanded_row: Array = []
+		for x in range(GRID):
+			expanded_row.append(-1)
+		expanded.append(expanded_row)
+	for y in range(8):
+		for x in range(8):
+			expanded[y + 1][x + 1] = value[y][x]
+	return expanded
 
 func _valid_saved_pieces(value: Variant) -> bool:
 	if not (value is Array) or value.size() != 3:
@@ -559,7 +561,7 @@ func _restore_saved_session() -> bool:
 		return false
 	var saved_board: Variant = config.get_value("session", "board", [])
 	# Preserve an in-progress 8x8 session from older installs by centering it
-	# into the required 8x8 board.
+	# inside the 10x10 board.
 	saved_board = _expand_legacy_board(saved_board)
 	var saved_pieces: Variant = config.get_value("session", "pieces", [])
 	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
@@ -620,7 +622,7 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	var w := size.x
 	var h := size.y
-	# Match the reference: a broad, nearly square 8x8 board with generous cell size.
+	# Match the reference: a broad, nearly square 10x10 board with generous cell size.
 	board_size = minf(w * 0.86, h * 0.39)
 	cell = board_size / GRID
 	board_origin = Vector2((w - board_size) * 0.5, h * 0.228)
@@ -645,7 +647,7 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	# On the 8x8 board, a random tray can occasionally contain only
+	# On the 10x10 board, a random tray can occasionally contain only
 	# shapes that do not fit even though empty cells remain. Reroll the tray
 	# before declaring game over; this keeps difficulty fair without changing
 	# the seeded daily-challenge sequence for a given run.
