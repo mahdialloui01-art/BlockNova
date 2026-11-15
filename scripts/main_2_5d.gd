@@ -518,7 +518,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool, incl
 
 
 func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
-    # Every cube in a placed shape gets its own luminous crown and four sparks.
+    # Every cube in a placed shape gets its own luminous crown and six evenly spaced sparks.
     # These are children of the already tracked tile pop, so effect cleanup and
     # the strict root-node budget remain unchanged.
     var halo := MeshInstance3D.new()
@@ -565,7 +565,7 @@ func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
         spark.material_override = spark_mat
         spark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         parent.add_child(spark)
-        var angle := TAU * float(i) / 4.0
+        var angle := TAU * float(i) / 6.0
         spark.position = Vector3(cos(angle) * 0.38, 0.56, sin(angle) * 0.38)
         spark.scale = Vector3.ONE * 0.25
         var spark_tween := create_tween()
