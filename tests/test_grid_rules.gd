@@ -294,8 +294,13 @@ func _run_tests() -> void:
     # Stop generated music and sound effects before releasing the scene tree.
     for child in game.get_children():
         if child is AudioStreamPlayer:
-            (child as AudioStreamPlayer).stop()
+            var audio_player := child as AudioStreamPlayer
+            audio_player.stop()
+            audio_player.stream = null
     game.queue_free()
+    await process_frame
+    # Let the audio server release any final playback references before exit.
+    await create_timer(0.35).timeout
     await process_frame
     await process_frame
     # Release loaded scenes/scripts/streams before the headless runner exits.
