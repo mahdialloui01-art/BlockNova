@@ -8,7 +8,7 @@ func _run_tests() -> void:
     if not _check(main_scene != null, "The active Android scene must load"):
         return
     var rules_script := load("res://scripts/main.gd") as GDScript
-    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 8, "Shared gameplay rules must use an 8x8 board"):
+    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 10, "Shared gameplay rules must use an 8x8 board"):
         return
     var alternate_3d_script := load("res://scripts/main_3d.gd") as GDScript
     if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 8, "Alternate 3D mode must also use an 8x8 board"):
@@ -46,10 +46,23 @@ func _run_tests() -> void:
         return
     if not _check(int(game.get("_active_visual_effects")) == 3, "All placement and line-clear visual effects must be tracked while animating"):
         return
+    var placement_effect := effects_root.get_node_or_null("PlacementPop") as MeshInstance3D
+    if not _check(placement_effect != null, "Each placed cube must receive a tracked placement-pop effect"):
+        return
+    var spark_positions: Array[Vector3] = []
+    for child in placement_effect.get_children():
+        if child.name == "PieceCellSpark" and child is Node3D:
+            spark_positions.append((child as Node3D).position)
+    if not _check(spark_positions.size() == 6, "Each placed cube must emit six energy sparks"):
+        return
+    for i in range(spark_positions.size()):
+        for j in range(i + 1, spark_positions.size()):
+            if not _check(spark_positions[i].distance_to(spark_positions[j]) > 0.10, "Energy sparks must be distributed without overlapping"):
+                return
     var effect_viewport := game.get("_viewport") as SubViewport
     if not _check(effect_viewport.render_target_update_mode == SubViewport.UPDATE_ALWAYS, "The 3D viewport must update only while transient effects animate"):
         return
-    await create_timer(0.55).timeout
+    await create_timer(0.70).timeout
     await process_frame
     if not _check(int(game.get("_active_visual_effects")) == 0 and effects_root.get_child_count() == 0, "Transient effects must clean themselves up after animation"):
         return
@@ -92,17 +105,17 @@ func _run_tests() -> void:
     if not _check(preset_text.contains("permissions/vibrate=true"), "Android export must declare the VIBRATE permission"):
         return
     var initial_board: Array = game.get("board")
-    if not _check(initial_board.size() == 8, "New game must create exactly 8 rows"):
+    if not _check(initial_board.size() == 10, "New game must create exactly 8 rows"):
         return
     for row in initial_board:
-        if not _check(row is Array and row.size() == 8, "Every board row must contain exactly 8 cells"):
+        if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 8 cells"):
             return
 
     # Prepare a full bottom row and right column with one shared empty corner.
     var test_board := _empty_board()
-    for x in range(7):
+    for x in range(9):
         test_board[7][x] = 0
-    for y in range(7):
+    for y in range(9):
         test_board[y][7] = 0
 
     game.set("board", test_board)
@@ -110,28 +123,28 @@ func _run_tests() -> void:
     game.set("piece_colors", [Color("#27DDF2")])
     game.set("selected", 0)
 
-    if not _check(game.call("_can_place", [Vector2i(0, 0)], Vector2i(7, 7)), "A single block must fit in the bottom-right cell"):
+    if not _check(game.call("_can_place", [Vector2i(0, 0)], Vector2i(9, 9)), "A single block must fit in the bottom-right cell"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(8, 7)), "Placement beyond the right edge must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(10, 9)), "Placement beyond the right edge must be rejected"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(7, 8)), "Placement beyond the bottom edge must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(9, 10)), "Placement beyond the bottom edge must be rejected"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 7)), "Negative coordinates must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 9)), "Negative coordinates must be rejected"):
         return
 
     game.call("_try_place", Vector2i(7, 7))
     var actual_cleared_cells: Array = game.get("_last_cleared_cells")
     var actual_cleared_colors: Dictionary = game.get("_last_cleared_colors")
-    if not _check(actual_cleared_cells.size() == 15 and actual_cleared_colors.size() == 15, "Simultaneous row and column clearing must capture each unique cell and its color"):
+    if not _check(actual_cleared_cells.size() == 19 and actual_cleared_colors.size() == 19, "Simultaneous row and column clearing must capture each unique cell and its color"):
         return
-    if not _check(int(game.get("_active_visual_effects")) >= 15, "Every cleared tile must receive one short visual fade alongside combo celebration effects"):
+    if not _check(int(game.get("_active_visual_effects")) >= 19, "Every cleared tile must receive one short visual fade alongside combo celebration effects"):
         return
     await create_timer(0.90).timeout
     await process_frame
     if not _check(int(game.get("_active_visual_effects")) == 0, "All real line-clear and combo animations must finish and clean up"):
         return
     var final_board: Array = game.get("board")
-    for i in range(8):
+    for i in range(10):
         if not _check(int(final_board[7][i]) == -1, "Completed bottom row was not cleared"):
             return
         if not _check(int(final_board[i][7]) == -1, "Completed right column was not cleared"):
@@ -139,9 +152,9 @@ func _run_tests() -> void:
 
     var cleared_cells: Array = game.get("_last_cleared_cells")
     var cleared_colors: Dictionary = game.get("_last_cleared_colors")
-    if not _check(cleared_cells.size() == 15, "Simultaneous 8x8 row and column clearing must report each cell once"):
+    if not _check(cleared_cells.size() == 19, "Simultaneous 10x10 row and column clearing must report each cell once"):
         return
-    if not _check(cleared_colors.size() == 15 and int(cleared_colors.get(Vector2i(7, 7), -1)) == 0, "Cleared-cell colors must be captured for renderer effects"):
+    if not _check(cleared_colors.size() == 19 and int(cleared_colors.get(Vector2i(7, 7), -1)) == 0, "Cleared-cell colors must be captured for renderer effects"):
         return
 
     if not _check(int(game.get("combo_streak")) == 1, "A successful line clear must start combo x1"):
@@ -195,7 +208,7 @@ func _run_tests() -> void:
         return
     if not _check(int(game.get("score")) == saved_score, "Resume must restore the score"):
         return
-    if not _check(game.get("board") == saved_board, "Resume must restore all 64 board cells"):
+    if not _check(game.get("board") == saved_board, "Resume must restore all 100 board cells"):
         return
     if not _check(game.get("pieces") == saved_pieces, "Resume must restore the three tray pieces"):
         return
@@ -211,7 +224,7 @@ func _run_tests() -> void:
     if not _check(not bool(game.call("_has_saved_session")) and not resume_button.visible, "Clearing a session must hide the resume action"):
         return
 
-    # A saved 10x10 game is cropped to its central 8x8 area.
+    # An older 8x8 session is centered in the new 10x10 board.
     var legacy_board: Array = []
     for y in range(10):
         var legacy_row: Array = []
@@ -224,12 +237,12 @@ func _run_tests() -> void:
     saved_config.set_value("session", "board", legacy_board)
     saved_config.save("user://blocknova.cfg")
     game.set("config", saved_config)
-    if not _check(bool(game.call("_restore_saved_session")), "A valid legacy 10x10 session must migrate to 8x8"):
+    if not _check(bool(game.call("_restore_saved_session")), "A valid legacy 8x8 session must migrate to 10x10"):
         return
     var migrated_board: Array = game.get("board")
-    if not _check(migrated_board.size() == 8 and migrated_board[0].size() == 8, "Legacy sessions must become an 8x8 board"):
+    if not _check(migrated_board.size() == 10 and migrated_board[0].size() == 10, "Legacy sessions must become a 10x10 board"):
         return
-    if not _check(int(migrated_board[1][2]) == 2, "Legacy board contents must be preserved in the central 8x8 area"):
+    if not _check(int(migrated_board[3][4]) == 2, "Legacy board contents must be preserved at the center of the 10x10 area"):
         return
     game.call("_clear_saved_session")
 
@@ -244,9 +257,9 @@ func _run_tests() -> void:
     if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i.ZERO), "Malformed board dimensions must be rejected safely"):
         return
 
-    # The 8x8 tray must not cause a false game-over when even one cell remains.
+    # The 10x10 tray must not cause a false game-over when even one cell remains.
     var almost_full_board := []
-    for y in range(8):
+    for y in range(10):
         var row: Array = []
         for x in range(8):
             row.append(-1 if y == 0 and x == 0 else 0)
@@ -256,7 +269,7 @@ func _run_tests() -> void:
     var tray_rng := game.get("game_rng") as RandomNumberGenerator
     tray_rng.seed = 8128
     game.call("_new_pieces")
-    if not _check(bool(game.call("_any_move")) and not bool(game.get("game_over")), "Tray generation must preserve a legal one-cell move on an almost-full 8x8 board"):
+    if not _check(bool(game.call("_any_move")) and not bool(game.get("game_over")), "Tray generation must preserve a legal one-cell move on an almost-full 10x10 board"):
         return
     if not _check(game.get("pieces")[0].size() == 1, "Almost-full board fallback must provide a one-cell piece"):
         return
@@ -277,7 +290,7 @@ func _run_tests() -> void:
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
         return
 
-    print("PASS: 8x8 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 15-cell fade cleanup, placement pop, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     game.free()
     quit(0)
 
