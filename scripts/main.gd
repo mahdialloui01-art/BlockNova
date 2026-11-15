@@ -51,6 +51,8 @@ var game_rng := RandomNumberGenerator.new()
 var home_ui: CanvasLayer
 var _sfx_players: Dictionary = {}
 var _music_player: AudioStreamPlayer
+var _combo_voice_player: AudioStreamPlayer
+var _combo_voice_streams: Dictionary = {}
 var _theme_color := Color("#27DDF2")
 var _theme_target := Color("#27DDF2")
 var placement_note_index := 0
@@ -79,6 +81,10 @@ func _setup_audio() -> void:
 	_music_player.volume_db = -19.0
 	_music_player.stream = _make_music_stream()
 	add_child(_music_player)
+	_combo_voice_player = AudioStreamPlayer.new()
+	_combo_voice_player.name = "ComboMilestoneVoice"
+	_combo_voice_player.volume_db = -1.5
+	add_child(_combo_voice_player)
 	_update_music_state()
 
 func _make_music_stream() -> AudioStreamWAV:
@@ -178,11 +184,30 @@ func _update_music_state() -> void:
 	else:
 		_music_player.stop()
 
-func _play_combo_voice(_level: int) -> void:
-	# Android TTS engines vary by device and can terminate the game when first
-	# initialized during gameplay. Combo milestones use the built-in synthesized
-	# combo sound and visual banner instead; never invoke external platform TTS.
-	return
+func _play_combo_voice(level: int) -> void:
+	# Play bundled, offline WAV voice cues. This avoids Android's platform TTS
+	# bridge, which is inconsistent across devices and caused milestone crashes.
+	if not sound_enabled or not is_instance_valid(_combo_voice_player):
+		return
+	var voice_paths := {
+		3: "res://assets/audio/combo_good.wav",
+		5: "res://assets/audio/combo_amazing.wav",
+		8: "res://assets/audio/combo_unstoppable.wav",
+		10: "res://assets/audio/combo_legendary.wav"
+	}
+	var voice_path := str(voice_paths.get(level, ""))
+	if voice_path.is_empty():
+		return
+	var voice_stream := _combo_voice_streams.get(level) as AudioStream
+	if voice_stream == null:
+		voice_stream = load(voice_path) as AudioStream
+		if voice_stream == null:
+			push_warning("Combo voice asset could not be loaded: " + voice_path)
+			return
+		_combo_voice_streams[level] = voice_stream
+	_combo_voice_player.stop()
+	_combo_voice_player.stream = voice_stream
+	_combo_voice_player.play()
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
