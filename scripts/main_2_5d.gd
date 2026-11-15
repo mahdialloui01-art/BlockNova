@@ -550,7 +550,7 @@ func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
     halo_tween.tween_property(halo_mat, "emission_energy_multiplier", 0.0, 0.38)
     for i in range(6):
         var spark := MeshInstance3D.new()
-        spark.name = "PieceCellSpark"
+        spark.name = "PieceCellSpark_%d" % i
         var spark_mesh := SphereMesh.new()
         spark_mesh.radius = 0.105
         spark_mesh.height = 0.21
