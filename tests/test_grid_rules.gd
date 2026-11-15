@@ -8,10 +8,10 @@ func _run_tests() -> void:
     if not _check(main_scene != null, "The active Android scene must load"):
         return
     var rules_script := load("res://scripts/main.gd") as GDScript
-    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 10, "Shared gameplay rules must use an 8x8 board"):
+    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 10, "Shared gameplay rules must use a 10x10 board"):
         return
     var alternate_3d_script := load("res://scripts/main_3d.gd") as GDScript
-    if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 8, "Alternate 3D mode must also use an 8x8 board"):
+    if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 10, "Alternate 3D mode must also use a 10x10 board"):
         return
     var game := main_scene.instantiate() as Control
     if not _check(game != null and game.get_script().resource_path == "res://scripts/main_2_5d.gd", "Regression tests must instantiate the active 2.5D scene"):
@@ -105,18 +105,18 @@ func _run_tests() -> void:
     if not _check(preset_text.contains("permissions/vibrate=true"), "Android export must declare the VIBRATE permission"):
         return
     var initial_board: Array = game.get("board")
-    if not _check(initial_board.size() == 10, "New game must create exactly 8 rows"):
+    if not _check(initial_board.size() == 10, "New game must create exactly 10 rows"):
         return
     for row in initial_board:
-        if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 8 cells"):
+        if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 10 cells"):
             return
 
     # Prepare a full bottom row and right column with one shared empty corner.
     var test_board := _empty_board()
     for x in range(9):
-        test_board[7][x] = 0
+        test_board[9][x] = 0
     for y in range(9):
-        test_board[y][7] = 0
+        test_board[y][9] = 0
 
     game.set("board", test_board)
     game.set("pieces", [[Vector2i(0, 0)], [], []])
@@ -132,7 +132,7 @@ func _run_tests() -> void:
     if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 9)), "Negative coordinates must be rejected"):
         return
 
-    game.call("_try_place", Vector2i(7, 7))
+    game.call("_try_place", Vector2i(9, 9))
     var actual_cleared_cells: Array = game.get("_last_cleared_cells")
     var actual_cleared_colors: Dictionary = game.get("_last_cleared_colors")
     if not _check(actual_cleared_cells.size() == 19 and actual_cleared_colors.size() == 19, "Simultaneous row and column clearing must capture each unique cell and its color"):
@@ -145,16 +145,16 @@ func _run_tests() -> void:
         return
     var final_board: Array = game.get("board")
     for i in range(10):
-        if not _check(int(final_board[7][i]) == -1, "Completed bottom row was not cleared"):
+        if not _check(int(final_board[9][i]) == -1, "Completed bottom row was not cleared"):
             return
-        if not _check(int(final_board[i][7]) == -1, "Completed right column was not cleared"):
+        if not _check(int(final_board[i][9]) == -1, "Completed right column was not cleared"):
             return
 
     var cleared_cells: Array = game.get("_last_cleared_cells")
     var cleared_colors: Dictionary = game.get("_last_cleared_colors")
     if not _check(cleared_cells.size() == 19, "Simultaneous 10x10 row and column clearing must report each cell once"):
         return
-    if not _check(cleared_colors.size() == 19 and int(cleared_colors.get(Vector2i(7, 7), -1)) == 0, "Cleared-cell colors must be captured for renderer effects"):
+    if not _check(cleared_colors.size() == 19 and int(cleared_colors.get(Vector2i(9, 9), -1)) == 0, "Cleared-cell colors must be captured for renderer effects"):
         return
 
     if not _check(int(game.get("combo_streak")) == 1, "A successful line clear must start combo x1"):
@@ -226,9 +226,9 @@ func _run_tests() -> void:
 
     # An older 8x8 session is centered in the new 10x10 board.
     var legacy_board: Array = []
-    for y in range(10):
+    for y in range(8):
         var legacy_row: Array = []
-        for x in range(10):
+        for x in range(8):
             legacy_row.append(-1)
         legacy_board.append(legacy_row)
     legacy_board[2][3] = 2
@@ -261,7 +261,7 @@ func _run_tests() -> void:
     var almost_full_board := []
     for y in range(10):
         var row: Array = []
-        for x in range(8):
+        for x in range(10):
             row.append(-1 if y == 0 and x == 0 else 0)
         almost_full_board.append(row)
     game.set("board", almost_full_board)
@@ -276,9 +276,9 @@ func _run_tests() -> void:
 
     # A completely filled board has no legal move, even with the fallback piece.
     var blocked_board := []
-    for y in range(8):
+    for y in range(10):
         var row: Array = []
-        for x in range(8):
+        for x in range(10):
             row.append(0)
         blocked_board.append(row)
     game.set("board", blocked_board)
@@ -296,9 +296,9 @@ func _run_tests() -> void:
 
 func _empty_board() -> Array:
     var result: Array = []
-    for y in range(8):
+    for y in range(10):
         var row: Array = []
-        for x in range(8):
+        for x in range(10):
             row.append(-1)
         result.append(row)
     return result
