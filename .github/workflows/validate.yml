@@ -15,6 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate offline spoken combo voice assets
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak
+          bash scripts/generate_combo_voice_assets.sh
+
       - name: Download and stage only the original KayKit model and dependencies
         shell: bash
         run: |
