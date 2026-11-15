@@ -291,8 +291,21 @@ func _run_tests() -> void:
         return
 
     print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
-    game.free()
-    quit(0)
+    # Stop generated music and sound effects before releasing the scene tree.
+    for child in game.get_children():
+        if child is AudioStreamPlayer:
+            (child as AudioStreamPlayer).stop()
+    game.queue_free()
+    await process_frame
+    await process_frame
+    # Release loaded scenes/scripts/streams before the headless runner exits.
+    game = null
+    main_scene = null
+    rules_script = null
+    alternate_3d_script = null
+    music_player = null
+    music_stream = null
+    call_deferred("quit", 0)
 
 func _empty_board() -> Array:
     var result: Array = []
