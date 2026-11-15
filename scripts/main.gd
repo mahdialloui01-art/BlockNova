@@ -178,30 +178,11 @@ func _update_music_state() -> void:
 	else:
 		_music_player.stop()
 
-func _play_combo_voice(level: int) -> void:
-	# Use the platform's native TTS service only when Godot reports it available.
-	# This keeps devices without an installed voice engine completely silent and safe.
-	if not sound_enabled or not DisplayServer.has_feature(DisplayServer.FEATURE_TEXT_TO_SPEECH):
-		return
-	var phrases := {
-		3: "Good!",
-		5: "Amazing!",
-		8: "Unstoppable!",
-		10: "Legendary!"
-	}
-	if not phrases.has(level):
-		return
-	var voices := DisplayServer.tts_get_voices_for_language("en")
-	if voices.is_empty():
-		var all_voices := DisplayServer.tts_get_voices()
-		if all_voices.is_empty():
-			return
-		voices.append(str(all_voices[0].get("id", "")))
-	var voice_id := str(voices[0])
-	if voice_id.is_empty():
-		return
-	# Short, energetic calls; interrupt stale praise so the newest milestone is heard.
-	DisplayServer.tts_speak(str(phrases[level]), voice_id, 100, 1.12, 1.08, level, true)
+func _play_combo_voice(_level: int) -> void:
+	# Android TTS engines vary by device and can terminate the game when first
+	# initialized during gameplay. Combo milestones use the built-in synthesized
+	# combo sound and visual banner instead; never invoke external platform TTS.
+	return
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
