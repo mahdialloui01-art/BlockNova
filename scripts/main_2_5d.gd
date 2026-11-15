@@ -436,9 +436,9 @@ func _on_placement_resolved(placed_cells: Array[Vector2i], cleared_cells: Array[
         return
     var placed_color: Color = COLORS[clampi(placed_color_index, 0, COLORS.size() - 1)]
     var placement_asset_parent: MeshInstance3D = null
+    # Animate every cube in the submitted shape, including cells that
+    # immediately complete a line. Those cells also receive their clear flash.
     for coordinate in placed_cells:
-        if cleared_cells.has(coordinate):
-            continue
         var tile_effect := _spawn_tile_effect(coordinate, placed_color, false)
         if placement_asset_parent == null:
             placement_asset_parent = tile_effect
@@ -500,7 +500,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool, incl
         tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
         tween.tween_property(effect, "scale", target_scale * 1.28, 0.36)
         tween.tween_property(material, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.36)
-        tween.tween_property(material, "emission_energy_multiplier", 0.0, 0.36)
+        tween.tween_property(material, "emission_energy_multiplier", 0.0, 0.40)
         tween.chain().tween_interval(0.16)
         tween.tween_callback(effect.queue_free)
     else:
@@ -548,7 +548,7 @@ func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
     halo_tween.tween_property(halo, "scale", Vector3.ONE * 1.72, 0.38)
     halo_tween.tween_property(halo_mat, "albedo_color", Color(color.r, color.g, color.b, 0.0), 0.38)
     halo_tween.tween_property(halo_mat, "emission_energy_multiplier", 0.0, 0.38)
-    for i in range(4):
+    for i in range(6):
         var spark := MeshInstance3D.new()
         spark.name = "PieceCellSpark"
         var spark_mesh := SphereMesh.new()
@@ -566,13 +566,13 @@ func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
         spark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         parent.add_child(spark)
         var angle := TAU * float(i) / 4.0
-        spark.position = Vector3(cos(angle) * 0.36, 0.56, sin(angle) * 0.36)
+        spark.position = Vector3(cos(angle) * 0.38, 0.56, sin(angle) * 0.38)
         spark.scale = Vector3.ONE * 0.25
         var spark_tween := create_tween()
         spark_tween.set_parallel(true)
         spark_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-        spark_tween.tween_property(spark, "position", Vector3(cos(angle) * 0.82, 0.72, sin(angle) * 0.82), 0.36)
-        spark_tween.tween_property(spark, "scale", Vector3.ZERO, 0.36)
+        spark_tween.tween_property(spark, "position", Vector3(cos(angle) * 0.88, 0.78, sin(angle) * 0.88), 0.40)
+        spark_tween.tween_property(spark, "scale", Vector3.ZERO, 0.40)
         spark_tween.tween_property(spark_mat, "emission_energy_multiplier", 0.0, 0.36)
 
 
