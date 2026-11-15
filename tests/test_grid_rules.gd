@@ -51,7 +51,7 @@ func _run_tests() -> void:
         return
     var spark_positions: Array[Vector3] = []
     for child in placement_effect.get_children():
-        if child.name == "PieceCellSpark" and child is Node3D:
+        if str(child.name).begins_with("PieceCellSpark_") and child is Node3D:
             spark_positions.append((child as Node3D).position)
     if not _check(spark_positions.size() == 6, "Each placed cube must emit six energy sparks"):
         return
