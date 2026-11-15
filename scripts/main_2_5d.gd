@@ -103,7 +103,7 @@ func _setup_3d_view() -> void:
     var light := DirectionalLight3D.new()
     light.rotation_degrees = Vector3(-48, -28, 0)
     light.light_energy = 1.48
-    # Tile shadows were producing muddy black halos inside the small 8x8 wells.
+    # Tile shadows were producing muddy black halos inside the small 10x10 wells.
     # Keep the lighting clean and use material shading for depth instead.
     light.shadow_enabled = false
     light.shadow_bias = 0.05
@@ -373,7 +373,7 @@ func _build_single_board_mesh() -> MeshInstance3D:
 
 func _update_board_theme() -> void:
     # Recesses, dividers and the outer frame follow the same smoothed dominant hue.
-    # Distinct luminance levels preserve the carved 8x8 wells and strong cube contrast.
+    # Distinct luminance levels preserve the carved 10x10 wells and strong cube contrast.
     var accent: Color = _theme_color
     var frame_color := Color("#8F6045").lerp(accent.darkened(0.18), 0.38)
     var floor_color := Color("#453027").lerp(accent.darkened(0.62), 0.24)
