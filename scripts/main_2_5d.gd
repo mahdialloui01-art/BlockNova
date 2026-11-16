@@ -103,7 +103,7 @@ func _setup_3d_view() -> void:
     var light := DirectionalLight3D.new()
     light.rotation_degrees = Vector3(-48, -28, 0)
     light.light_energy = 1.48
-    # Tile shadows were producing muddy black halos inside the small 8x8 wells.
+    # Tile shadows were producing muddy black halos inside the small 10x10 wells.
     # Keep the lighting clean and use material shading for depth instead.
     light.shadow_enabled = false
     light.shadow_bias = 0.05
@@ -373,7 +373,7 @@ func _build_single_board_mesh() -> MeshInstance3D:
 
 func _update_board_theme() -> void:
     # Recesses, dividers and the outer frame follow the same smoothed dominant hue.
-    # Distinct luminance levels preserve the carved 8x8 wells and strong cube contrast.
+    # Distinct luminance levels preserve the carved 10x10 wells and strong cube contrast.
     var accent: Color = _theme_color
     var frame_color := Color("#8F6045").lerp(accent.darkened(0.18), 0.38)
     var floor_color := Color("#453027").lerp(accent.darkened(0.62), 0.24)
@@ -518,7 +518,7 @@ func _spawn_tile_effect(coordinate: Vector2i, color: Color, is_clear: bool, incl
 
 
 func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
-    # Every cube in a placed shape gets its own luminous crown and four sparks.
+    # Every cube in a placed shape gets its own luminous crown and six evenly spaced sparks.
     # These are children of the already tracked tile pop, so effect cleanup and
     # the strict root-node budget remain unchanged.
     var halo := MeshInstance3D.new()
@@ -550,7 +550,7 @@ func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
     halo_tween.tween_property(halo_mat, "emission_energy_multiplier", 0.0, 0.38)
     for i in range(6):
         var spark := MeshInstance3D.new()
-        spark.name = "PieceCellSpark"
+        spark.name = "PieceCellSpark_%d" % i
         var spark_mesh := SphereMesh.new()
         spark_mesh.radius = 0.105
         spark_mesh.height = 0.21
@@ -565,7 +565,7 @@ func _add_piece_cell_aura(parent: MeshInstance3D, color: Color) -> void:
         spark.material_override = spark_mat
         spark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         parent.add_child(spark)
-        var angle := TAU * float(i) / 4.0
+        var angle := TAU * float(i) / 6.0
         spark.position = Vector3(cos(angle) * 0.38, 0.56, sin(angle) * 0.38)
         spark.scale = Vector3.ONE * 0.25
         var spark_tween := create_tween()
