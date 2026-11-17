@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 10
+const GRID := 8
 # Six distinct, vivid jewel tones with a warm premium balance.
 # Keep each index stable: saved boards store color indices, not Color values.
 const COLORS := [
