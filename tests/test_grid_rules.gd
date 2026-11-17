@@ -169,6 +169,18 @@ func _run_tests() -> void:
         return
     game.call("_reset_game")
 
+    # Returning home during an active gesture must still release the owning finger.
+    game.set("screen", 0)
+    game.set("_active_touch_index", 2)
+    var home_release := InputEventScreenTouch.new()
+    home_release.index = 2
+    home_release.position = grab_point
+    home_release.pressed = false
+    game.call("_input", home_release)
+    if not _check(int(game.get("_active_touch_index")) == -1, "A touch release must clear pointer ownership even when the home UI handles the screen"):
+        return
+    game.call("_reset_game")
+
     # Prepare a full bottom row and right column with one shared empty corner.
     var test_board := _empty_board()
     for x in range(9):
