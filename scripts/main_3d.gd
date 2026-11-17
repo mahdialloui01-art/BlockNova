@@ -1,6 +1,6 @@
 extends Node3D
 
-const GRID := 10
+const GRID := 8
 const CELL := 1.0
 const BOARD_Z := -1.8
 const TRAY_Z := 6.1
