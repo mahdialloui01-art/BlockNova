@@ -32,6 +32,8 @@ var best := 0
 var selected := -1
 var dragging := false
 var pointer := Vector2.ZERO
+# Only the finger that started a touch drag may move or release that piece.
+var _active_touch_index := -1
 # Cell inside the grabbed piece that stays under the user's finger.
 var drag_cell_offset := Vector2i.ZERO
 var game_over := false
@@ -850,20 +852,35 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
+			# Ignore additional fingers until the finger that began the gesture releases.
+			if _active_touch_index >= 0 and _active_touch_index != event.index:
+				return
+			if _active_touch_index == -1:
+				_active_touch_index = event.index
 			_pointer_down(event.position)
 		else:
+			# A second finger must never release or cancel the active drag.
+			if _active_touch_index != event.index:
+				return
 			_pointer_up(event.position)
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_pointer_down(event.position)
-		else:
-			_pointer_up(event.position)
+			_active_touch_index = -1
 	elif event is InputEventScreenDrag:
+		if _active_touch_index != event.index:
+			return
 		if screen == Screen.PLAYING and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
 			pointer=event.position
 			dragging=true
 			queue_redraw()
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if _active_touch_index >= 0:
+			return
+		if event.pressed:
+			_pointer_down(event.position)
+		else:
+			_pointer_up(event.position)
 	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		if _active_touch_index >= 0:
+			return
 		if screen == Screen.PLAYING and selected >= 0 and selected < pieces.size() and not pieces[selected].is_empty():
 			pointer=event.position
 			dragging=true
