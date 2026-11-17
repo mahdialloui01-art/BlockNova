@@ -631,7 +631,7 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	var w := size.x
 	var h := size.y
-	# Match the reference: a broad, nearly square 10x10 board with generous cell size.
+	# Match the reference: a broad, nearly square 8x8 board with generous cell size.
 	board_size = minf(w * 0.86, h * 0.39)
 	cell = board_size / GRID
 	board_origin = Vector2((w - board_size) * 0.5, h * 0.228)
@@ -656,7 +656,7 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	# On the 10x10 board, a random tray can occasionally contain only
+	# On the 8x8 board, a random tray can occasionally contain only
 	# shapes that do not fit even though empty cells remain. Reroll the tray
 	# before declaring game over; this keeps difficulty fair without changing
 	# the seeded daily-challenge sequence for a given run.
