@@ -186,30 +186,34 @@ func _update_music_state() -> void:
 	else:
 		_music_player.stop()
 
-func _play_combo_voice(level: int) -> void:
-	# Play bundled, offline WAV voice cues. This avoids Android's platform TTS
-	# bridge, which is inconsistent across devices and caused milestone crashes.
+func _play_voice_cue(cue: String) -> void:
+	# Offline, pre-rendered voice lines: no network, Android TTS dependency, or runtime synthesis.
 	if not sound_enabled or not is_instance_valid(_combo_voice_player):
 		return
 	var voice_paths := {
-		3: "res://assets/audio/combo_good.wav",
-		5: "res://assets/audio/combo_amazing.wav",
-		8: "res://assets/audio/combo_unstoppable.wav",
-		10: "res://assets/audio/combo_legendary.wav"
+		"good": "res://assets/audio/voice_good.wav",
+		"amazing": "res://assets/audio/voice_amazing.wav",
+		"unstoppable": "res://assets/audio/voice_unstoppable.wav",
+		"legendary": "res://assets/audio/voice_legendary.wav",
+		"game_over": "res://assets/audio/voice_game_over.wav"
 	}
-	var voice_path := str(voice_paths.get(level, ""))
+	var voice_path := str(voice_paths.get(cue, ""))
 	if voice_path.is_empty():
 		return
-	var voice_stream := _combo_voice_streams.get(level) as AudioStream
+	var voice_stream := _combo_voice_streams.get(cue) as AudioStream
 	if voice_stream == null:
 		voice_stream = load(voice_path) as AudioStream
 		if voice_stream == null:
-			push_warning("Combo voice asset could not be loaded: " + voice_path)
+			push_warning("Voice cue asset could not be loaded: " + voice_path)
 			return
-		_combo_voice_streams[level] = voice_stream
+		_combo_voice_streams[cue] = voice_stream
 	_combo_voice_player.stop()
 	_combo_voice_player.stream = voice_stream
 	_combo_voice_player.play()
+
+func _play_combo_voice(level: int) -> void:
+	var cue_by_level := {3: "good", 5: "amazing", 8: "unstoppable", 10: "legendary"}
+	_play_voice_cue(str(cue_by_level.get(level, "")))
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
@@ -677,6 +681,7 @@ func _new_pieces() -> void:
 	if not _any_move():
 		game_over = true
 		_play_sfx("gameover")
+		_play_voice_cue("game_over")
 
 func _draw() -> void:
 	_layout()
