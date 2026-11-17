@@ -996,7 +996,10 @@ func _piece_cell_under_finger(piece_index: int, pos: Vector2) -> Vector2i:
 		minp.y = mini(minp.y, c.y)
 		maxp.x = maxi(maxp.x, c.x)
 		maxp.y = maxi(maxp.y, c.y)
-	var unit := minf(20.0, 66.0 / float(maxi(maxp.x - minp.x + 1, maxp.y - minp.y + 1)))
+	# Match the exact dimensions used by the active 3D tray renderer.
+	# This keeps the grabbed logical cell aligned with the cube visible under the finger.
+	var piece_extent := float(maxi(maxp.x - minp.x + 1, maxp.y - minp.y + 1))
+	var unit := minf(cell * 0.44, 140.0 / piece_extent)
 	var center := Vector2(size.x * (float(piece_index) + 0.5) / 3.0, tray_y + 55)
 	var origin := center - Vector2((maxp.x - minp.x + 1) * unit, (maxp.y - minp.y + 1) * unit) * 0.5
 	var nearest := Vector2i.ZERO
