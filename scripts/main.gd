@@ -849,6 +849,10 @@ func _draw_text(value: String,pos: Vector2,font_size: int,color: Color,align: Ho
 
 func _input(event: InputEvent) -> void:
 	if screen == Screen.HOME and is_instance_valid(home_ui):
+		# A gesture can change screens before its release event arrives.
+		# Clear the owning finger even while the home UI handles the rest.
+		if event is InputEventScreenTouch and not event.pressed and event.index == _active_touch_index:
+			_active_touch_index = -1
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
