@@ -495,23 +495,31 @@ func _valid_saved_board(value: Variant) -> bool:
 				return false
 	return true
 
-func _expand_legacy_board(value: Variant) -> Variant:
-	# Preserve older 8x8 sessions by centering them inside the 10x10 board.
-	if not (value is Array) or value.size() != 8:
+func _shrink_legacy_board(value: Variant) -> Variant:
+	# New versions use 8x8. Keep an older 8x8 save unchanged.
+	if not (value is Array):
+		return value
+	if value.size() == GRID:
+		return value
+	# Older installed builds used 10x10. Keep the centered 8x8 area only
+	# when the discarded outer ring is empty, so no placed blocks disappear.
+	if value.size() != 10:
 		return value
 	for row in value:
-		if not (row is Array) or row.size() != 8:
+		if not (row is Array) or row.size() != 10:
 			return value
-	var expanded: Array = []
+	for i in range(10):
+		if int(value[0][i]) != -1 or int(value[9][i]) != -1:
+			return []
+		if int(value[i][0]) != -1 or int(value[i][9]) != -1:
+			return []
+	var cropped: Array = []
 	for y in range(GRID):
-		var expanded_row: Array = []
+		var cropped_row: Array = []
 		for x in range(GRID):
-			expanded_row.append(-1)
-		expanded.append(expanded_row)
-	for y in range(8):
-		for x in range(8):
-			expanded[y + 1][x + 1] = value[y][x]
-	return expanded
+			cropped_row.append(value[y + 1][x + 1])
+		cropped.append(cropped_row)
+	return cropped
 
 func _valid_saved_pieces(value: Variant) -> bool:
 	if not (value is Array) or value.size() != 3:
@@ -562,9 +570,8 @@ func _restore_saved_session() -> bool:
 	if not _has_saved_session() or int(config.get_value("session", "version", 0)) != 1:
 		return false
 	var saved_board: Variant = config.get_value("session", "board", [])
-	# Preserve an in-progress 8x8 session from older installs by centering it
-	# inside the 10x10 board.
-	saved_board = _expand_legacy_board(saved_board)
+	# Convert older 10x10 saves safely; never discard occupied outer cells.
+	saved_board = _shrink_legacy_board(saved_board)
 	var saved_pieces: Variant = config.get_value("session", "pieces", [])
 	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
 	if not _valid_saved_board(saved_board) or not _valid_saved_pieces(saved_pieces):
