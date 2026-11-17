@@ -754,7 +754,15 @@ func _draw_game() -> void:
 		var pop_progress := 1.0 - combo_popup_time / 2.0
 		var pop_alpha := minf(1.0, combo_popup_time * 2.8)
 		var pop_scale := 1.0 + 0.28 * sin(minf(pop_progress * 2.4, 1.0) * PI)
-		var pop_text := "COMBO x%d  •  %s" % [combo_popup_level, "UNSTOPPABLE!" if combo_popup_level >= 5 else ("ON FIRE!" if combo_popup_level >= 3 else "NICE CHAIN!")]
+		var popup_milestone := "NICE CHAIN!"
+		match combo_popup_level:
+			3: popup_milestone = "GOOD!"
+			5: popup_milestone = "AMAZING!"
+			8: popup_milestone = "UNSTOPPABLE!"
+			10: popup_milestone = "LEGENDARY!"
+			_:
+				popup_milestone = "ON FIRE!" if combo_popup_level > 3 else "NICE CHAIN!"
+		var pop_text := "COMBO x%d  •  %s" % [combo_popup_level, popup_milestone]
 		var pop_size := int(34.0 * pop_scale)
 		var pop_y := board_origin.y + board_size * 0.5 - 12.0 - pop_progress * 58.0
 		draw_string(font, Vector2(3, pop_y + 5), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size + 2, Color(0.02, 0.01, 0.08, pop_alpha * 0.95))
