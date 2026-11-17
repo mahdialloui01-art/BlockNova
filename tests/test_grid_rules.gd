@@ -121,6 +121,7 @@ func _run_tests() -> void:
     var tray_center := Vector2(game.size.x / 6.0, float(game.get("tray_y")) + 55.0)
     var grab_point := tray_center + Vector2(10.0, 0.0)
     var touch_start := InputEventScreenTouch.new()
+    touch_start.index = 0
     touch_start.position = grab_point
     touch_start.pressed = true
     game.call("_input", touch_start)
@@ -131,17 +132,40 @@ func _run_tests() -> void:
     var board_origin: Vector2 = game.get("board_origin")
     var cell_size: float = game.get("cell")
     var drop_point := board_origin + Vector2(5.5 * cell_size, 4.5 * cell_size)
+    # A second finger may neither steal the selected piece nor move/release the first finger's drag.
+    var secondary_touch := InputEventScreenTouch.new()
+    secondary_touch.index = 1
+    secondary_touch.position = Vector2(game.size.x * 0.5, float(game.get("tray_y")) + 55.0)
+    secondary_touch.pressed = true
+    game.call("_input", secondary_touch)
+    if not _check(int(game.get("selected")) == 0 and bool(game.get("dragging")) and int(game.get("_active_touch_index")) == 0, "A second finger must not steal the active piece"):
+        return
+    var secondary_drag := InputEventScreenDrag.new()
+    secondary_drag.index = 1
+    secondary_drag.position = drop_point
+    game.call("_input", secondary_drag)
+    if not _check(game.get("pointer") == grab_point and bool(game.get("dragging")), "A second finger must not move the first finger's preview"):
+        return
+    var secondary_end := InputEventScreenTouch.new()
+    secondary_end.index = 1
+    secondary_end.position = drop_point
+    secondary_end.pressed = false
+    game.call("_input", secondary_end)
+    if not _check(bool(game.get("dragging")) and int(game.get("_active_touch_index")) == 0, "A second finger must not release the active drag"):
+        return
     var touch_drag := InputEventScreenDrag.new()
+    touch_drag.index = 0
     touch_drag.position = drop_point
     game.call("_input", touch_drag)
     var touch_end := InputEventScreenTouch.new()
+    touch_end.index = 0
     touch_end.position = drop_point
     touch_end.pressed = false
     game.call("_input", touch_end)
     var touch_board: Array = game.get("board")
     if not _check(int(touch_board[4][4]) == 0 and int(touch_board[4][5]) == 0, "Releasing the held right cell over board cell (5, 4) must place the piece at origin (4, 4)"):
         return
-    if not _check(int(game.get("score")) == 10 and int(game.get("selected")) == -1 and not bool(game.get("dragging")), "A completed touch drop must score once and clear drag selection"):
+    if not _check(int(game.get("score")) == 10 and int(game.get("selected")) == -1 and not bool(game.get("dragging")) and int(game.get("_active_touch_index")) == -1, "A completed touch drop must score once and clear drag selection and pointer ownership"):
         return
     game.call("_reset_game")
 
