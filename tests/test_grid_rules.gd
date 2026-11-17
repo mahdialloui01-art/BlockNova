@@ -111,6 +111,40 @@ func _run_tests() -> void:
         if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 10 cells"):
             return
 
+    # Exercise the Android touch path: grab the right cell of a two-cell piece and drop it at board cell (5, 4).
+    game.size = Vector2(1080, 2160)
+    game.call("_layout")
+    game.call("_reset_game")
+    game.set("board", _empty_board())
+    game.set("pieces", [[Vector2i(0, 0), Vector2i(1, 0)], [], []])
+    game.set("piece_colors", [Color("#27DDF2"), Color("#FFB84D"), Color("#A78BFA")])
+    var tray_center := Vector2(game.size.x / 6.0, float(game.get("tray_y")) + 55.0)
+    var grab_point := tray_center + Vector2(10.0, 0.0)
+    var touch_start := InputEventScreenTouch.new()
+    touch_start.position = grab_point
+    touch_start.pressed = true
+    game.call("_input", touch_start)
+    if not _check(int(game.get("selected")) == 0 and bool(game.get("dragging")), "Touching a tray piece must begin a drag"):
+        return
+    if not _check(game.get("drag_cell_offset") == Vector2i(1, 0), "Touch drag must preserve the exact piece cell held under the finger"):
+        return
+    var board_origin: Vector2 = game.get("board_origin")
+    var cell_size: float = game.get("cell")
+    var drop_point := board_origin + Vector2(5.5 * cell_size, 4.5 * cell_size)
+    var touch_drag := InputEventScreenDrag.new()
+    touch_drag.position = drop_point
+    game.call("_input", touch_drag)
+    var touch_end := InputEventScreenTouch.new()
+    touch_end.position = drop_point
+    touch_end.pressed = false
+    game.call("_input", touch_end)
+    var touch_board: Array = game.get("board")
+    if not _check(int(touch_board[4][4]) == 0 and int(touch_board[4][5]) == 0, "Releasing the held right cell over board cell (5, 4) must place the piece at origin (4, 4)"):
+        return
+    if not _check(int(game.get("score")) == 10 and int(game.get("selected")) == -1 and not bool(game.get("dragging")), "A completed touch drop must score once and clear drag selection"):
+        return
+    game.call("_reset_game")
+
     # Prepare a full bottom row and right column with one shared empty corner.
     var test_board := _empty_board()
     for x in range(9):
@@ -290,7 +324,7 @@ func _run_tests() -> void:
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
         return
 
-    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, combo score 630, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, combo score 630, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     # Stop generated music and sound effects before releasing the scene tree.
     for child in game.get_children():
         if child is AudioStreamPlayer:
