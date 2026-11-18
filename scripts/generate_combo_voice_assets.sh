@@ -25,13 +25,13 @@ grep -qi "public domain" assets/audio/VOICE_MODEL_CARD.txt
 speak() {
   local filename="$1"
   local phrase="$2"
-  python3 -m piper -m "$MODEL" --length-scale 0.92 -f "assets/audio/$filename" -- "$phrase"
+  python3 -m piper -m "$MODEL" --length-scale 1.0 --noise-scale 0.75 --noise-w 0.8 -f "assets/audio/$filename" -- "$phrase"
   test -s "assets/audio/$filename"
   echo "Generated offline male voice cue: assets/audio/$filename"
 }
 
-speak voice_good.wav "YES! NICE MOVE!"
-speak voice_amazing.wav "AMAZING! YOU ARE ON FIRE!"
-speak voice_unstoppable.wav "UNSTOPPABLE! KEEP IT GOING!"
-speak voice_legendary.wav "LEGENDARY! ABSOLUTELY INCREDIBLE!"
-speak voice_game_over.wav "GAME OVER! TAKE A BREATH, THEN COME BACK STRONGER!"
+speak voice_good.wav "YES! THAT IS A GREAT MOVE!"
+speak voice_amazing.wav "WHAT A MOVE! YOU ARE ON FIRE!"
+speak voice_unstoppable.wav "UNSTOPPABLE! KEEP THAT STREAK ALIVE!"
+speak voice_legendary.wav "INCREDIBLE! THAT IS LEGENDARY!"
+speak voice_game_over.wav "GAME OVER! WHAT A RUN! COME BACK EVEN STRONGER!"
