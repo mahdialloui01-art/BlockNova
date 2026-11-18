@@ -238,6 +238,14 @@ func _run_tests() -> void:
     game.call("_update_combo_streak", 3)
     if not _check(int(game.get("combo_streak")) == 3, "Three lines cleared in one placement must produce combo x3"):
         return
+    if not _check(int(game.call("_combo_score_bonus", 1)) == 50, "Combo x1 bonus must be 50 points"):
+        return
+    if not _check(int(game.call("_combo_score_bonus", 2)) == 200, "Combo x2 bonus must rise quadratically to 200 points"):
+        return
+    if not _check(int(game.call("_combo_score_bonus", 3)) == 450, "Combo x3 bonus must exceed the x2 bonus by a larger amount"):
+        return
+    if not _check(int(game.call("_combo_score_bonus", 5)) == 1250 and int(game.call("_combo_score_bonus", 10)) == 5000, "High combo levels must receive rapidly increasing rewards"):
+        return
     game.set("combo_streak", 1)
     game.set("combo_missed_placements", 2)
     if not _check(int(game.get("score")) == 755, "Two-line same-placement clear score must include placement, clear, and x2 combo bonuses"):
@@ -354,7 +362,7 @@ func _run_tests() -> void:
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
         return
 
-    print("PASS: 8x8 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 15-cell fade cleanup, placement pop, combo score 630, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 8x8 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 15-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     # Stop generated music and sound effects before releasing the scene tree.
     for child in game.get_children():
         if child is AudioStreamPlayer:
