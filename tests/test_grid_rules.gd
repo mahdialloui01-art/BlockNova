@@ -8,16 +8,29 @@ func _run_tests() -> void:
     if not _check(main_scene != null, "The active Android scene must load"):
         return
     var rules_script := load("res://scripts/main.gd") as GDScript
-    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 8, "Shared gameplay rules must use an 8x8 board"):
+    if not _check(rules_script != null and int(rules_script.get_script_constant_map().get("GRID", -1)) == 10, "Shared gameplay rules must use a 10x10 board"):
         return
     var alternate_3d_script := load("res://scripts/main_3d.gd") as GDScript
-    if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 8, "Alternate 3D mode must also use an 8x8 board"):
+    if not _check(alternate_3d_script != null and int(alternate_3d_script.get_script_constant_map().get("GRID", -1)) == 10, "Alternate 3D mode must also use a 10x10 board"):
         return
     var game := main_scene.instantiate() as Control
     if not _check(game != null and game.get_script().resource_path == "res://scripts/main_2_5d.gd", "Regression tests must instantiate the active 2.5D scene"):
         return
     root.add_child(game)
     await process_frame
+    # Verify generated voice files exist, but keep headless regression tests silent.
+    # Real audio playback is left to the Android device check.
+    var required_voice_assets := [
+        "res://assets/audio/voice_good.wav",
+        "res://assets/audio/voice_amazing.wav",
+        "res://assets/audio/voice_unstoppable.wav",
+        "res://assets/audio/voice_legendary.wav",
+        "res://assets/audio/voice_game_over.wav"
+    ]
+    for voice_path in required_voice_assets:
+        if not _check(FileAccess.file_exists(voice_path), "Generated combo voice asset is missing: " + voice_path):
+            return
+    game.set("sound_enabled", false)
     if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
         return
     if not _check(game.get("_block_mesh") is Mesh, "The active scene must build its rounded 3D block mesh"):
@@ -183,48 +196,48 @@ func _run_tests() -> void:
 
     # Prepare a full bottom row and right column with one shared empty corner.
     var test_board := _empty_board()
-    for x in range(7):
-        test_board[7][x] = 0
-    for y in range(7):
-        test_board[y][7] = 0
+    for x in range(9):
+        test_board[9][x] = 0
+    for y in range(9):
+        test_board[y][9] = 0
 
     game.set("board", test_board)
     game.set("pieces", [[Vector2i(0, 0)], [], []])
     game.set("piece_colors", [Color("#27DDF2")])
     game.set("selected", 0)
 
-    if not _check(game.call("_can_place", [Vector2i(0, 0)], Vector2i(7, 7)), "A single block must fit in the bottom-right cell"):
+    if not _check(game.call("_can_place", [Vector2i(0, 0)], Vector2i(9, 9)), "A single block must fit in the bottom-right cell"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(8, 7)), "Placement beyond the right edge must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(10, 9)), "Placement beyond the right edge must be rejected"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(7, 8)), "Placement beyond the bottom edge must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(9, 10)), "Placement beyond the bottom edge must be rejected"):
         return
-    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 7)), "Negative coordinates must be rejected"):
+    if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 9)), "Negative coordinates must be rejected"):
         return
 
-    game.call("_try_place", Vector2i(7, 7))
+    game.call("_try_place", Vector2i(9, 9))
     var actual_cleared_cells: Array = game.get("_last_cleared_cells")
     var actual_cleared_colors: Dictionary = game.get("_last_cleared_colors")
-    if not _check(actual_cleared_cells.size() == 15 and actual_cleared_colors.size() == 15, "Simultaneous row and column clearing must capture each unique cell and its color"):
+    if not _check(actual_cleared_cells.size() == 19 and actual_cleared_colors.size() == 19, "Simultaneous row and column clearing must capture each unique cell and its color"):
         return
-    if not _check(int(game.get("_active_visual_effects")) >= 15, "Every cleared tile must receive one short visual fade alongside combo celebration effects"):
+    if not _check(int(game.get("_active_visual_effects")) >= 19, "Every cleared tile must receive one short visual fade alongside combo celebration effects"):
         return
     await create_timer(0.90).timeout
     await process_frame
     if not _check(int(game.get("_active_visual_effects")) == 0, "All real line-clear and combo animations must finish and clean up"):
         return
     var final_board: Array = game.get("board")
-    for i in range(8):
-        if not _check(int(final_board[7][i]) == -1, "Completed bottom row was not cleared"):
+    for i in range(10):
+        if not _check(int(final_board[9][i]) == -1, "Completed bottom row was not cleared"):
             return
-        if not _check(int(final_board[i][7]) == -1, "Completed right column was not cleared"):
+        if not _check(int(final_board[i][9]) == -1, "Completed right column was not cleared"):
             return
 
     var cleared_cells: Array = game.get("_last_cleared_cells")
     var cleared_colors: Dictionary = game.get("_last_cleared_colors")
-    if not _check(cleared_cells.size() == 15, "Simultaneous 8x8 row and column clearing must report each cell once"):
+    if not _check(cleared_cells.size() == 19, "Simultaneous 10x10 row and column clearing must report each cell once"):
         return
-    if not _check(cleared_colors.size() == 15 and int(cleared_colors.get(Vector2i(7, 7), -1)) == 0, "Cleared-cell colors must be captured for renderer effects"):
+    if not _check(cleared_colors.size() == 19 and int(cleared_colors.get(Vector2i(9, 9), -1)) == 0, "Cleared-cell colors must be captured for renderer effects"):
         return
 
     if not _check(int(game.get("combo_streak")) == 2, "A simultaneous row and column clear in one placement must produce combo x2"):
@@ -291,7 +304,7 @@ func _run_tests() -> void:
         return
     if not _check(int(game.get("score")) == saved_score, "Resume must restore the score"):
         return
-    if not _check(game.get("board") == saved_board, "Resume must restore all 64 board cells"):
+    if not _check(game.get("board") == saved_board, "Resume must restore all 100 board cells"):
         return
     if not _check(game.get("pieces") == saved_pieces, "Resume must restore the three tray pieces"):
         return
@@ -307,26 +320,43 @@ func _run_tests() -> void:
     if not _check(not bool(game.call("_has_saved_session")) and not resume_button.visible, "Clearing a session must hide the resume action"):
         return
 
-    # A prior 10x10 save is safely cropped to 8x8 only when the outer ring is empty.
+    # A native 10x10 save must retain even occupied cells on the outer edge.
+    var native_board := _empty_board()
+    native_board[9][9] = 4
+    saved_config.set_value("session", "available", true)
+    saved_config.set_value("session", "version", 1)
+    saved_config.set_value("session", "board", native_board)
+    saved_config.save("user://blocknova.cfg")
+    game.set("config", saved_config)
+    if not _check(bool(game.call("_restore_saved_session")), "A native 10x10 session must restore successfully"):
+        return
+    var native_restored: Array = game.get("board")
+    if not _check(native_restored.size() == 10 and int(native_restored[9][9]) == 4, "Native 10x10 saves must preserve occupied outer-edge cells"):
+        return
+
+    # Older 10x10 saves are expanded into the center of the 10x10 board without losing cells.
     var legacy_board: Array = []
-    # Legacy 10x10 board with content inside the retained center.
-    for y in range(10):
+    for y in range(8):
         var legacy_row: Array = []
-        for x in range(10):
+        for x in range(8):
             legacy_row.append(-1)
         legacy_board.append(legacy_row)
+    legacy_board[0][0] = 1
     legacy_board[3][4] = 2
+    legacy_board[7][7] = 3
     saved_config.set_value("session", "available", true)
     saved_config.set_value("session", "version", 1)
     saved_config.set_value("session", "board", legacy_board)
     saved_config.save("user://blocknova.cfg")
     game.set("config", saved_config)
-    if not _check(bool(game.call("_restore_saved_session")), "A valid legacy 10x10 session must migrate to 8x8"):
+    if not _check(bool(game.call("_restore_saved_session")), "A valid legacy 10x10 session must migrate to 10x10"):
         return
     var migrated_board: Array = game.get("board")
-    if not _check(migrated_board.size() == 8 and migrated_board[0].size() == 8, "Legacy sessions must become an 8x8 board"):
+    if not _check(migrated_board.size() == 10 and migrated_board[0].size() == 10, "Legacy sessions must become a 10x10 board"):
         return
-    if not _check(int(migrated_board[2][3]) == 2, "Legacy board contents must be preserved in the retained center area"):
+    if not _check(int(migrated_board[1][1]) == 1 and int(migrated_board[4][5]) == 2 and int(migrated_board[8][8]) == 3, "Legacy board contents must be preserved in the centered 10x10 area"):
+        return
+    if not _check(int(migrated_board[0][0]) == -1 and int(migrated_board[9][9]) == -1, "New outer ring cells must start empty after migration"):
         return
     game.call("_clear_saved_session")
 
@@ -341,11 +371,11 @@ func _run_tests() -> void:
     if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i.ZERO), "Malformed board dimensions must be rejected safely"):
         return
 
-    # The 8x8 tray must not cause a false game-over when even one cell remains.
+    # The 10x10 tray must not cause a false game-over when even one cell remains.
     var almost_full_board := []
-    for y in range(8):
+    for y in range(10):
         var row: Array = []
-        for x in range(8):
+        for x in range(10):
             row.append(-1 if y == 0 and x == 0 else 0)
         almost_full_board.append(row)
     game.set("board", almost_full_board)
@@ -353,16 +383,16 @@ func _run_tests() -> void:
     var tray_rng := game.get("game_rng") as RandomNumberGenerator
     tray_rng.seed = 8128
     game.call("_new_pieces")
-    if not _check(bool(game.call("_any_move")) and not bool(game.get("game_over")), "Tray generation must preserve a legal one-cell move on an almost-full 8x8 board"):
+    if not _check(bool(game.call("_any_move")) and not bool(game.get("game_over")), "Tray generation must preserve a legal one-cell move on an almost-full 10x10 board"):
         return
     if not _check(game.get("pieces")[0].size() == 1, "Almost-full board fallback must provide a one-cell piece"):
         return
 
     # A completely filled board has no legal move, even with the fallback piece.
     var blocked_board := []
-    for y in range(8):
+    for y in range(10):
         var row: Array = []
-        for x in range(8):
+        for x in range(10):
             row.append(0)
         blocked_board.append(row)
     game.set("board", blocked_board)
@@ -374,7 +404,7 @@ func _run_tests() -> void:
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
         return
 
-    print("PASS: 8x8 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 15-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     # Stop generated music and sound effects before releasing the scene tree.
     for child in game.get_children():
         if child is AudioStreamPlayer:
@@ -398,9 +428,9 @@ func _run_tests() -> void:
 
 func _empty_board() -> Array:
     var result: Array = []
-    for y in range(8):
+    for y in range(10):
         var row: Array = []
-        for x in range(8):
+        for x in range(10):
             row.append(-1)
         result.append(row)
     return result
