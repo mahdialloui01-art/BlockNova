@@ -118,10 +118,10 @@ func _run_tests() -> void:
     if not _check(preset_text.contains("permissions/vibrate=true"), "Android export must declare the VIBRATE permission"):
         return
     var initial_board: Array = game.get("board")
-    if not _check(initial_board.size() == 8, "New game must create exactly 8 rows"):
+    if not _check(initial_board.size() == 10, "New game must create exactly 10 rows"):
         return
     for row in initial_board:
-        if not _check(row is Array and row.size() == 8, "Every board row must contain exactly 8 cells"):
+        if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 10 cells"):
             return
 
     # Exercise the Android touch path: grab the right cell of a two-cell piece and drop it at board cell (5, 4).
