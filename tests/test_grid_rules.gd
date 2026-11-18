@@ -30,6 +30,39 @@ func _run_tests() -> void:
     for voice_path in required_voice_assets:
         if not _check(FileAccess.file_exists(voice_path), "Generated combo voice asset is missing: " + voice_path):
             return
+
+    # Verify that the generated WAVs are genuinely decodable by Godot and use
+    # the exact mobile-friendly PCM format produced by the asset pipeline.
+    var voice_cases := [
+        {"level": 3, "cue": "good"},
+        {"level": 5, "cue": "amazing"},
+        {"level": 8, "cue": "unstoppable"},
+        {"level": 10, "cue": "legendary"}
+    ]
+    game.set("sound_enabled", true)
+    var voice_player := game.get("_combo_voice_player") as AudioStreamPlayer
+    var loaded_voice_streams: Dictionary = game.get("_combo_voice_streams")
+    for voice_case in voice_cases:
+        var cue := str(voice_case["cue"])
+        game.call("_play_combo_voice", int(voice_case["level"]))
+        var voice_stream := loaded_voice_streams.get(cue) as AudioStreamWAV
+        if not _check(voice_stream != null, "Combo milestone must load its mapped WAV cue: " + cue):
+            return
+        if not _check(voice_stream.mix_rate == 48000 and voice_stream.format == AudioStreamWAV.FORMAT_16_BITS and not voice_stream.stereo, "Voice cue must decode as 48 kHz, 16-bit mono PCM: " + cue):
+            return
+        if not _check(voice_player.stream == voice_stream, "Combo milestone must play the correct voice cue: " + cue):
+            return
+        voice_player.stop()
+
+    game.call("_play_voice_cue", "game_over")
+    var game_over_voice := loaded_voice_streams.get("game_over") as AudioStreamWAV
+    if not _check(game_over_voice != null and voice_player.stream == game_over_voice, "Game-over voice cue must load and route correctly"):
+        return
+    voice_player.stop()
+    game.set("sound_enabled", false)
+    game.call("_play_voice_cue", "good")
+    if not _check(voice_player.stream == game_over_voice, "Disabling sound must prevent combo voice playback"):
+        return
     game.set("sound_enabled", false)
     if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
         return
