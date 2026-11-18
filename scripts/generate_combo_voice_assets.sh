@@ -5,33 +5,35 @@ mkdir -p assets/audio
 VOICE_DIR="${RUNNER_TEMP:-/tmp}/blocknova-piper-voice"
 mkdir -p "$VOICE_DIR"
 
-# Piper is a local neural TTS engine. The selected en_US-john-medium voice is
-# documented as a US English male voice with a public-domain training dataset.
-# Audio is rendered during the APK build and bundled locally; gameplay needs no
-# network connection and no TTS engine at runtime.
-VOICE="en_US-john-medium"
+# Use a native Arabic male neural voice (Kareem), then render English game
+# callouts in Arabic phonetic script. This produces an English-speaking Arabic
+# accent rather than the previous generic US-English voice. Audio is bundled
+# offline; no network/TTS dependency is needed while playing.
+VOICE="ar_JO-kareem-medium"
 MODEL="$VOICE_DIR/$VOICE.onnx"
 
 python3 -m piper.download_voices "$VOICE" --download-dir "$VOICE_DIR"
 test -s "$MODEL"
 test -s "$MODEL.json"
 
-# Keep the model's provenance and license notice alongside the generated assets.
 curl --fail --location --retry 3 \
-  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/john/medium/MODEL_CARD" \
+  "https://huggingface.co/rhasspy/piper-voices/resolve/main/ar/ar_JO/kareem/medium/MODEL_CARD" \
   --output assets/audio/VOICE_MODEL_CARD.txt
-grep -qi "public domain" assets/audio/VOICE_MODEL_CARD.txt
+grep -qi "ar_JO" assets/audio/VOICE_MODEL_CARD.txt
 
 speak() {
   local filename="$1"
   local phrase="$2"
-  python3 -m piper -m "$MODEL" --length-scale 1.0 --noise-scale 0.75 --noise-w 0.8 -f "assets/audio/$filename" -- "$phrase"
+  # 1.0 is normal speaking speed; emphatic wording and punctuation add energy.
+  python3 -m piper -m "$MODEL" --length-scale 1.0 --noise-scale 0.78 --noise-w 0.8 -f "assets/audio/$filename" -- "$phrase"
   test -s "assets/audio/$filename"
-  echo "Generated offline male voice cue: assets/audio/$filename"
+  echo "Generated Arabic-accented English male voice cue: assets/audio/$filename"
 }
 
-speak voice_good.wav "YES! THAT IS A GREAT MOVE!"
-speak voice_amazing.wav "WHAT A MOVE! YOU ARE ON FIRE!"
-speak voice_unstoppable.wav "UNSTOPPABLE! KEEP THAT STREAK ALIVE!"
-speak voice_legendary.wav "INCREDIBLE! THAT IS LEGENDARY!"
-speak voice_game_over.wav "GAME OVER! WHAT A RUN! COME BACK EVEN STRONGER!"
+# Phonetic Arabic spelling guides Kareem to pronounce the English callouts
+# with a clear Arabic accent while keeping the spoken words recognizably English.
+speak voice_good.wav "يَس!!! ذَاتْ إِزْ أَ جْرَيْتْ مُوف!!!"
+speak voice_amazing.wav "وَاتْ أَ مُوف!!! يُو آرْ أُونْ فَايَر!!!"
+speak voice_unstoppable.wav "أَنْسْتُوبَبُل!!! كِيبْ ذَاتْ سْتْرِيكْ أَلَايْڤ!!!"
+speak voice_legendary.wav "إِنْكْرِدَبُل!!! ذَاتْ إِزْ لِجِنْدَرِي!!!"
+speak voice_game_over.wav "گَيْمْ أُوڤَر!!! وَاتْ أَ رَنْ!!! كَمْ بَاكْ إِيڤِنْ سْتْرُونْگَر!!!"
