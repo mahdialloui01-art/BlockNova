@@ -15,10 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate offline spoken combo voice assets
+      - name: Generate offline neural male voice assets
         run: |
-          sudo apt-get update
-          sudo apt-get install -y espeak
+          python3 -m pip install --disable-pip-version-check piper-tts
           bash scripts/generate_combo_voice_assets.sh
 
       - name: Download and stage only the original KayKit model and dependencies
