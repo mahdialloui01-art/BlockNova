@@ -1089,10 +1089,9 @@ func _try_place(at: Vector2i) -> void:
 		_trigger_haptic(64 if cleared >= 2 else 40, 0.58 if cleared >= 2 else 0.42)
 		_play_sfx("combo" if cleared >= 2 or combo_streak >= 1 else "clear", 0, combo_streak)
 		_update_combo_streak(cleared)
-		score += 75 * combo_streak
-		# Reward sustained line clears with an escalating chain bonus after x1.
-		if combo_streak > 1:
-			score += cleared * 25 * (combo_streak - 1)
+		# Quadratic combo reward: every level is worth more than the level before.
+		# x1 = 50, x2 = 200, x3 = 450, x5 = 1250, x10 = 5000.
+		score += _combo_score_bonus(combo_streak)
 		combo_popup_level = combo_streak
 		combo_popup_time = 2.0
 		_on_combo_triggered(combo_streak, cleared)
@@ -1125,6 +1124,11 @@ func _try_place(at: Vector2i) -> void:
 func _on_placement_resolved(_placed_cells: Array[Vector2i], _cleared_cells: Array[Vector2i], _placed_color_index: int) -> void:
 	# Rendering subclasses animate this event; keep the rules layer renderer-independent.
 	pass
+
+func _combo_score_bonus(level: int) -> int:
+	var safe_level := maxi(level, 0)
+	return 50 * safe_level * safe_level
+
 
 func _update_combo_streak(cleared: int) -> void:
 	# Combo is the number of complete lines removed by this single placement,
