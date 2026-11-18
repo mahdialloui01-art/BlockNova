@@ -424,8 +424,10 @@ func _update_drag_preview(ghost_origin: Vector2i) -> void:
         var cy := int(coordinates[1])
         var cube := child as MeshInstance3D
         var ghost_center := board_origin + Vector2((ghost_origin.x + cx + 0.5) * cell, (ghost_origin.y + cy + 0.5) * cell)
-        cube.position = _screen_to_board_plane(ghost_center + finger_offset)
-        cube.scale = Vector3(block_world, block_world, block_world)
+        # Float the preview slightly above the board and enlarge it subtly while held.
+        # Position remains 1:1 with the finger; no smoothing lag is introduced.
+        cube.position = _screen_to_board_plane(ghost_center + finger_offset) + Vector3(0, 0.16, 0)
+        cube.scale = Vector3(block_world * 1.035, block_world * 1.035, block_world * 1.035)
         cube.material_override = _material_for(preview_color)
         found += 1
     if found > 0:

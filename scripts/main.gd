@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 10
+const GRID := 8
 # Six distinct, vivid jewel tones with a warm premium balance.
 # Keep each index stable: saved boards store color indices, not Color values.
 const COLORS := [
@@ -186,30 +186,34 @@ func _update_music_state() -> void:
 	else:
 		_music_player.stop()
 
-func _play_combo_voice(level: int) -> void:
-	# Play bundled, offline WAV voice cues. This avoids Android's platform TTS
-	# bridge, which is inconsistent across devices and caused milestone crashes.
+func _play_voice_cue(cue: String) -> void:
+	# Offline, pre-rendered voice lines: no network, Android TTS dependency, or runtime synthesis.
 	if not sound_enabled or not is_instance_valid(_combo_voice_player):
 		return
 	var voice_paths := {
-		3: "res://assets/audio/combo_good.wav",
-		5: "res://assets/audio/combo_amazing.wav",
-		8: "res://assets/audio/combo_unstoppable.wav",
-		10: "res://assets/audio/combo_legendary.wav"
+		"good": "res://assets/audio/voice_good.wav",
+		"amazing": "res://assets/audio/voice_amazing.wav",
+		"unstoppable": "res://assets/audio/voice_unstoppable.wav",
+		"legendary": "res://assets/audio/voice_legendary.wav",
+		"game_over": "res://assets/audio/voice_game_over.wav"
 	}
-	var voice_path := str(voice_paths.get(level, ""))
+	var voice_path := str(voice_paths.get(cue, ""))
 	if voice_path.is_empty():
 		return
-	var voice_stream := _combo_voice_streams.get(level) as AudioStream
+	var voice_stream := _combo_voice_streams.get(cue) as AudioStream
 	if voice_stream == null:
 		voice_stream = load(voice_path) as AudioStream
 		if voice_stream == null:
-			push_warning("Combo voice asset could not be loaded: " + voice_path)
+			push_warning("Voice cue asset could not be loaded: " + voice_path)
 			return
-		_combo_voice_streams[level] = voice_stream
+		_combo_voice_streams[cue] = voice_stream
 	_combo_voice_player.stop()
 	_combo_voice_player.stream = voice_stream
 	_combo_voice_player.play()
+
+func _play_combo_voice(level: int) -> void:
+	var cue_by_level := {3: "good", 5: "amazing", 8: "unstoppable", 10: "legendary"}
+	_play_voice_cue(str(cue_by_level.get(level, "")))
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
@@ -495,23 +499,31 @@ func _valid_saved_board(value: Variant) -> bool:
 				return false
 	return true
 
-func _expand_legacy_board(value: Variant) -> Variant:
-	# Preserve older 8x8 sessions by centering them inside the 10x10 board.
-	if not (value is Array) or value.size() != 8:
+func _shrink_legacy_board(value: Variant) -> Variant:
+	# New versions use 8x8. Keep an older 8x8 save unchanged.
+	if not (value is Array):
+		return value
+	if value.size() == GRID:
+		return value
+	# Older installed builds used 10x10. Keep the centered 8x8 area only
+	# when the discarded outer ring is empty, so no placed blocks disappear.
+	if value.size() != 10:
 		return value
 	for row in value:
-		if not (row is Array) or row.size() != 8:
+		if not (row is Array) or row.size() != 10:
 			return value
-	var expanded: Array = []
+	for i in range(10):
+		if int(value[0][i]) != -1 or int(value[9][i]) != -1:
+			return []
+		if int(value[i][0]) != -1 or int(value[i][9]) != -1:
+			return []
+	var cropped: Array = []
 	for y in range(GRID):
-		var expanded_row: Array = []
+		var cropped_row: Array = []
 		for x in range(GRID):
-			expanded_row.append(-1)
-		expanded.append(expanded_row)
-	for y in range(8):
-		for x in range(8):
-			expanded[y + 1][x + 1] = value[y][x]
-	return expanded
+			cropped_row.append(value[y + 1][x + 1])
+		cropped.append(cropped_row)
+	return cropped
 
 func _valid_saved_pieces(value: Variant) -> bool:
 	if not (value is Array) or value.size() != 3:
@@ -562,9 +574,8 @@ func _restore_saved_session() -> bool:
 	if not _has_saved_session() or int(config.get_value("session", "version", 0)) != 1:
 		return false
 	var saved_board: Variant = config.get_value("session", "board", [])
-	# Preserve an in-progress 8x8 session from older installs by centering it
-	# inside the 10x10 board.
-	saved_board = _expand_legacy_board(saved_board)
+	# Convert older 10x10 saves safely; never discard occupied outer cells.
+	saved_board = _shrink_legacy_board(saved_board)
 	var saved_pieces: Variant = config.get_value("session", "pieces", [])
 	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
 	if not _valid_saved_board(saved_board) or not _valid_saved_pieces(saved_pieces):
@@ -624,7 +635,7 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	var w := size.x
 	var h := size.y
-	# Match the reference: a broad, nearly square 10x10 board with generous cell size.
+	# Match the reference: a broad, nearly square 8x8 board with generous cell size.
 	board_size = minf(w * 0.86, h * 0.39)
 	cell = board_size / GRID
 	board_origin = Vector2((w - board_size) * 0.5, h * 0.228)
@@ -649,7 +660,7 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	# On the 10x10 board, a random tray can occasionally contain only
+	# On the 8x8 board, a random tray can occasionally contain only
 	# shapes that do not fit even though empty cells remain. Reroll the tray
 	# before declaring game over; this keeps difficulty fair without changing
 	# the seeded daily-challenge sequence for a given run.
@@ -670,6 +681,7 @@ func _new_pieces() -> void:
 	if not _any_move():
 		game_over = true
 		_play_sfx("gameover")
+		_play_voice_cue("game_over")
 
 func _draw() -> void:
 	_layout()
@@ -747,7 +759,15 @@ func _draw_game() -> void:
 		var pop_progress := 1.0 - combo_popup_time / 2.0
 		var pop_alpha := minf(1.0, combo_popup_time * 2.8)
 		var pop_scale := 1.0 + 0.28 * sin(minf(pop_progress * 2.4, 1.0) * PI)
-		var pop_text := "COMBO x%d  •  %s" % [combo_popup_level, "UNSTOPPABLE!" if combo_popup_level >= 5 else ("ON FIRE!" if combo_popup_level >= 3 else "NICE CHAIN!")]
+		var popup_milestone := "NICE CHAIN!"
+		match combo_popup_level:
+			3: popup_milestone = "GOOD!"
+			5: popup_milestone = "AMAZING!"
+			8: popup_milestone = "UNSTOPPABLE!"
+			10: popup_milestone = "LEGENDARY!"
+			_:
+				popup_milestone = "ON FIRE!" if combo_popup_level > 3 else "NICE CHAIN!"
+		var pop_text := "COMBO x%d  •  %s" % [combo_popup_level, popup_milestone]
 		var pop_size := int(34.0 * pop_scale)
 		var pop_y := board_origin.y + board_size * 0.5 - 12.0 - pop_progress * 58.0
 		draw_string(font, Vector2(3, pop_y + 5), pop_text, HORIZONTAL_ALIGNMENT_CENTER, w, pop_size + 2, Color(0.02, 0.01, 0.08, pop_alpha * 0.95))
@@ -981,7 +1001,10 @@ func _piece_cell_under_finger(piece_index: int, pos: Vector2) -> Vector2i:
 		minp.y = mini(minp.y, c.y)
 		maxp.x = maxi(maxp.x, c.x)
 		maxp.y = maxi(maxp.y, c.y)
-	var unit := minf(20.0, 66.0 / float(maxi(maxp.x - minp.x + 1, maxp.y - minp.y + 1)))
+	# Match the exact dimensions used by the active 3D tray renderer.
+	# This keeps the grabbed logical cell aligned with the cube visible under the finger.
+	var piece_extent := float(maxi(maxp.x - minp.x + 1, maxp.y - minp.y + 1))
+	var unit := minf(cell * 0.44, 140.0 / piece_extent)
 	var center := Vector2(size.x * (float(piece_index) + 0.5) / 3.0, tray_y + 55)
 	var origin := center - Vector2((maxp.x - minp.x + 1) * unit, (maxp.y - minp.y + 1) * unit) * 0.5
 	var nearest := Vector2i.ZERO
@@ -1082,6 +1105,7 @@ func _try_place(at: Vector2i) -> void:
 	elif not _any_move():
 		game_over=true
 		_play_sfx("gameover")
+		_play_voice_cue("game_over")
 		_trigger_haptic(72, 0.56)
 	if game_over:
 		_clear_saved_session()
