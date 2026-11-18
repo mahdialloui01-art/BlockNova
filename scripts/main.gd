@@ -1131,12 +1131,22 @@ func _combo_score_bonus(level: int) -> int:
 
 
 func _update_combo_streak(cleared: int) -> void:
-	# Combo is the number of complete lines removed by this single placement,
-	# counting both horizontal rows and vertical columns.
-	combo_streak = maxi(cleared, 0)
-	combo_missed_placements = 0
-	if combo_streak >= 3:
-		_play_combo_voice(combo_streak)
+	# Combo accumulates every line cleared across consecutive successful placements.
+	# A placement without a clear counts as one missed piece; the third miss resets it.
+	if cleared > 0:
+		var previous_combo := combo_streak
+		combo_streak += cleared
+		combo_missed_placements = 0
+		# Voice milestones play once when the running combo crosses each threshold.
+		for milestone in [3, 5, 8, 10]:
+			if previous_combo < milestone and combo_streak >= milestone:
+				_play_combo_voice(milestone)
+				break
+	else:
+		combo_missed_placements += 1
+		if combo_missed_placements >= 3:
+			combo_streak = 0
+			combo_missed_placements = 0
 
 
 func _on_combo_triggered(_level: int, _lines: int) -> void:
