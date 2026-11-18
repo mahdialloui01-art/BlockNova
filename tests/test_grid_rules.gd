@@ -18,8 +18,7 @@ func _run_tests() -> void:
         return
     root.add_child(game)
     await process_frame
-    # Verify generated voice files exist, but keep headless regression tests silent.
-    # Real audio playback is left to the Android device check.
+    # Verify the raw WAV contract as well as Godot's ability to load each cue.
     var required_voice_assets := [
         "res://assets/audio/voice_good.wav",
         "res://assets/audio/voice_amazing.wav",
@@ -30,6 +29,41 @@ func _run_tests() -> void:
     for voice_path in required_voice_assets:
         if not _check(FileAccess.file_exists(voice_path), "Generated combo voice asset is missing: " + voice_path):
             return
+        if not _check(_voice_asset_is_pcm_48k_mono(voice_path), "Generated voice WAV must be 48 kHz, 16-bit mono PCM: " + voice_path):
+            return
+
+    # Verify that each combo milestone routes to a decodable Godot audio stream.
+    var voice_cases := [
+        {"level": 3, "cue": "good"},
+        {"level": 5, "cue": "amazing"},
+        {"level": 8, "cue": "unstoppable"},
+        {"level": 10, "cue": "legendary"}
+    ]
+    game.set("sound_enabled", true)
+    var voice_player := game.get("_combo_voice_player") as AudioStreamPlayer
+    var loaded_voice_streams: Dictionary = game.get("_combo_voice_streams")
+    for voice_case in voice_cases:
+        var cue := str(voice_case["cue"])
+        game.call("_play_combo_voice", int(voice_case["level"]))
+        var voice_stream := loaded_voice_streams.get(cue) as AudioStream
+        if not _check(voice_stream != null, "Combo milestone must load its mapped voice cue: " + cue):
+            return
+        if not _check(voice_player.stream == voice_stream, "Combo milestone must play the correct voice cue: " + cue):
+            return
+        voice_player.stop()
+
+    game.call("_play_voice_cue", "game_over")
+    var game_over_voice := loaded_voice_streams.get("game_over") as AudioStream
+    if not _check(game_over_voice != null and voice_player.stream == game_over_voice, "Game-over voice cue must load and route correctly"):
+        return
+    voice_player.stop()
+    game.set("sound_enabled", false)
+    game.call("_play_voice_cue", "good")
+    if not _check(voice_player.stream == game_over_voice, "Disabling sound must prevent combo voice playback"):
+        return
+    game.call("_play_voice_cue", "good")
+    if not _check(voice_player.stream == game_over_voice, "Disabling sound must prevent combo voice playback"):
+        return
     game.set("sound_enabled", false)
     if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
         return
@@ -434,6 +468,22 @@ func _empty_board() -> Array:
             row.append(-1)
         result.append(row)
     return result
+
+func _voice_asset_is_pcm_48k_mono(path: String) -> bool:
+    var file := FileAccess.open(path, FileAccess.READ)
+    if file == null or file.get_length() < 44:
+        return false
+    var riff := file.get_buffer(4).get_string_from_ascii()
+    file.seek(8)
+    var wave := file.get_buffer(4).get_string_from_ascii()
+    file.seek(20)
+    var audio_format := file.get_16()
+    var channels := file.get_16()
+    var sample_rate := file.get_32()
+    file.seek(34)
+    var bits_per_sample := file.get_16()
+    file.close()
+    return riff == "RIFF" and wave == "WAVE" and audio_format == 1 and channels == 1 and sample_rate == 48000 and bits_per_sample == 16
 
 func _check(condition: bool, message: String) -> bool:
     if not condition:
