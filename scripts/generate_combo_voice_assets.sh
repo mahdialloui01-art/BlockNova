@@ -1,21 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
-mkdir -p assets/audio
-command -v espeak >/dev/null || { echo "espeak is required to build offline voice assets"; exit 1; }
 
-# Warm, energetic English game-announcer voice. WAV files are bundled into the APK,
-# so voice playback works offline and does not depend on Android TTS availability.
-VOICE="en-us+f3"
-SPEED=165
-PITCH=58
-AMPLITUDE=170
+mkdir -p assets/audio
+VOICE_DIR="${RUNNER_TEMP:-/tmp}/blocknova-piper-voice"
+mkdir -p "$VOICE_DIR"
+
+# Piper is a local neural TTS engine. The selected en_US-john-medium voice is
+# documented as a US English male voice with a public-domain training dataset.
+# Audio is rendered during the APK build and bundled locally; gameplay needs no
+# network connection and no TTS engine at runtime.
+VOICE="en_US-john-medium"
+MODEL="$VOICE_DIR/$VOICE.onnx"
+
+python3 -m piper.download_voices "$VOICE" --download-dir "$VOICE_DIR"
+test -s "$MODEL"
+test -s "$MODEL.json"
+
+# Keep the model's provenance and license notice alongside the generated assets.
+curl --fail --location --retry 3 \
+  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/john/medium/MODEL_CARD" \
+  --output assets/audio/VOICE_MODEL_CARD.txt
+grep -qi "public domain" assets/audio/VOICE_MODEL_CARD.txt
 
 speak() {
   local filename="$1"
   local phrase="$2"
-  espeak -v "$VOICE" -s "$SPEED" -p "$PITCH" -a "$AMPLITUDE" -w "assets/audio/$filename" "$phrase"
+  python3 -m piper -m "$MODEL" -f "assets/audio/$filename" -- "$phrase"
   test -s "assets/audio/$filename"
-  echo "Generated offline voice cue: assets/audio/$filename"
+  echo "Generated offline male voice cue: assets/audio/$filename"
 }
 
 speak voice_good.wav "Good!"
