@@ -30,13 +30,18 @@ speak() {
   python3 -m piper -m "$MODEL" --length-scale 1.0 --noise-scale 0.85 --noise-w 0.9 -f "$raw" -- "$phrase"
   test -s "$raw"
 
-  local sample_rate
-  sample_rate="$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "$raw")"
+  # Force a conventional 48 kHz mono PCM WAV. FFmpeg's 192 kHz default
+  # produced WAVE_FORMAT_EXTENSIBLE files that Godot 4.4.1 cannot import.
   ffmpeg -hide_banner -loglevel error -y -i "$raw" \
     -af "acompressor=threshold=-18dB:ratio=3:attack=5:release=90,loudnorm=I=-16:TP=-1.0:LRA=7" \
-    -c:a pcm_s16le "assets/audio/$filename"
+    -ar 48000 -ac 1 -c:a pcm_s16le -sample_fmt s16 -f wav "assets/audio/$filename"
   test -s "assets/audio/$filename"
-  echo "Generated and mastered Arabic Darija voice cue: assets/audio/$filename"
+  local output_codec output_rate
+  output_codec="$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "assets/audio/$filename")"
+  output_rate="$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "assets/audio/$filename")"
+  test "$output_codec" = "pcm_s16le"
+  test "$output_rate" = "48000"
+  echo "Generated 48 kHz PCM Arabic Darija voice cue: assets/audio/$filename"
 }
 
 speak voice_good.wav "يا سلام! كومبو مزدوج! بداية نارية!"
