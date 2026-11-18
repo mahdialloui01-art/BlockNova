@@ -334,7 +334,7 @@ func _run_tests() -> void:
     if not _check(native_restored.size() == 10 and int(native_restored[9][9]) == 4, "Native 10x10 saves must preserve occupied outer-edge cells"):
         return
 
-    # Older 10x10 saves are expanded into the center of the 10x10 board without losing cells.
+    # Older 8x8 saves are expanded into the center of the 10x10 board without losing cells.
     var legacy_board: Array = []
     for y in range(8):
         var legacy_row: Array = []
@@ -349,12 +349,12 @@ func _run_tests() -> void:
     saved_config.set_value("session", "board", legacy_board)
     saved_config.save("user://blocknova.cfg")
     game.set("config", saved_config)
-    if not _check(bool(game.call("_restore_saved_session")), "A valid legacy 10x10 session must migrate to 10x10"):
+    if not _check(bool(game.call("_restore_saved_session")), "A valid legacy 8x8 session must migrate to 10x10"):
         return
     var migrated_board: Array = game.get("board")
     if not _check(migrated_board.size() == 10 and migrated_board[0].size() == 10, "Legacy sessions must become a 10x10 board"):
         return
-    if not _check(int(migrated_board[1][1]) == 1 and int(migrated_board[4][5]) == 2 and int(migrated_board[8][8]) == 3, "Legacy board contents must be preserved in the centered 10x10 area"):
+    if not _check(int(migrated_board[1][1]) == 1 and int(migrated_board[4][5]) == 2 and int(migrated_board[8][8]) == 3, "Legacy board contents must be preserved in the centered 8x8 area"):
         return
     if not _check(int(migrated_board[0][0]) == -1 and int(migrated_board[9][9]) == -1, "New outer ring cells must start empty after migration"):
         return
