@@ -227,23 +227,16 @@ func _run_tests() -> void:
     if not _check(cleared_colors.size() == 15 and int(cleared_colors.get(Vector2i(7, 7), -1)) == 0, "Cleared-cell colors must be captured for renderer effects"):
         return
 
-    if not _check(int(game.get("combo_streak")) == 1, "A successful line clear must start combo x1"):
-        return
-    game.set("combo_streak", 2)
-    game.set("combo_missed_placements", 0)
-    game.call("_update_combo_streak", 0)
-    if not _check(int(game.get("combo_streak")) == 2 and int(game.get("combo_missed_placements")) == 1, "Combo must survive the first non-clearing placement"):
+    if not _check(int(game.get("combo_streak")) == 2, "A simultaneous row and column clear in one placement must produce combo x2"):
         return
     game.call("_update_combo_streak", 0)
-    if not _check(int(game.get("combo_streak")) == 2 and int(game.get("combo_missed_placements")) == 2, "Combo must survive the second non-clearing placement"):
+    if not _check(int(game.get("combo_streak")) == 0 and int(game.get("combo_missed_placements")) == 0, "Combo must reset after a placement that clears no lines"):
         return
-    game.call("_update_combo_streak", 0)
-    if not _check(int(game.get("combo_streak")) == 0 and int(game.get("combo_missed_placements")) == 0, "Combo must reset only after the third consecutive non-clearing placement"):
-        return
-    game.set("combo_streak", 2)
-    game.set("combo_missed_placements", 2)
     game.call("_update_combo_streak", 1)
-    if not _check(int(game.get("combo_streak")) == 3 and int(game.get("combo_missed_placements")) == 0, "A new line clear must extend combo and reset its missed-placement grace"):
+    if not _check(int(game.get("combo_streak")) == 1, "A single line cleared in one placement must produce combo x1"):
+        return
+    game.call("_update_combo_streak", 3)
+    if not _check(int(game.get("combo_streak")) == 3, "Three lines cleared in one placement must produce combo x3"):
         return
     game.set("combo_streak", 1)
     game.set("combo_missed_placements", 2)
