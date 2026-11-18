@@ -15,6 +15,8 @@ MODEL="$VOICE_DIR/$VOICE.onnx"
 python3 -m piper.download_voices "$VOICE" --download-dir "$VOICE_DIR"
 test -s "$MODEL"
 test -s "$MODEL.json"
+command -v ffmpeg >/dev/null
+command -v ffprobe >/dev/null
 
 # Keep the model's provenance and license notice alongside the generated assets.
 curl --fail --location --retry 3 \
@@ -25,14 +27,24 @@ grep -qi "public domain" assets/audio/VOICE_MODEL_CARD.txt
 speak() {
   local filename="$1"
   local phrase="$2"
-  # Natural speaking speed, with energetic English delivery.
-  python3 -m piper -m "$MODEL" --length-scale 1.0 --noise-scale 0.75 --noise-w 0.8 -f "assets/audio/$filename" -- "$phrase"
+  local raw="$VOICE_DIR/$filename"
+  # Keep natural timing, but ask for a more animated delivery.
+  python3 -m piper -m "$MODEL" --length-scale 1.0 --noise-scale 0.85 --noise-w 0.9 -f "$raw" -- "$phrase"
+  test -s "$raw"
+
+  # Master the cue for an energetic, forward sound: a subtle pitch lift,
+  # controlled dynamics and consistent perceived loudness, without speeding it up.
+  local sample_rate
+  sample_rate="$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "$raw")"
+  ffmpeg -hide_banner -loglevel error -y -i "$raw" \
+    -af "asetrate=${sample_rate}*1.035,aresample=${sample_rate},atempo=0.966184,acompressor=threshold=-18dB:ratio=3:attack=5:release=90,loudnorm=I=-16:TP=-1.0:LRA=7" \
+    -c:a pcm_s16le "assets/audio/$filename"
   test -s "assets/audio/$filename"
-  echo "Generated offline youthful English male voice cue: assets/audio/$filename"
+  echo "Generated and mastered high-energy English voice cue: assets/audio/$filename"
 }
 
-speak voice_good.wav "YES! THAT IS A GREAT MOVE!"
-speak voice_amazing.wav "WHAT A MOVE! YOU ARE ON FIRE!"
-speak voice_unstoppable.wav "UNSTOPPABLE! KEEP THAT STREAK ALIVE!"
-speak voice_legendary.wav "INCREDIBLE! THAT IS LEGENDARY!"
-speak voice_game_over.wav "GAME OVER! WHAT A RUN! COME BACK EVEN STRONGER!"
+speak voice_good.wav "OH YES! THAT IS A POWER MOVE!"
+speak voice_amazing.wav "WHAT A MOVE! YOU ARE ABSOLUTELY ON FIRE!"
+speak voice_unstoppable.wav "UNSTOPPABLE! KEEP THAT INCREDIBLE STREAK GOING!"
+speak voice_legendary.wav "WOW! THAT IS LEGENDARY! YOU ARE A BEAST!"
+speak voice_game_over.wav "WHAT A RUN! YOU FOUGHT LIKE A CHAMPION! LET'S GO AGAIN!"
