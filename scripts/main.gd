@@ -212,8 +212,17 @@ func _play_voice_cue(cue: String) -> void:
 	_combo_voice_player.play()
 
 func _play_combo_voice(level: int) -> void:
-	var cue_by_level := {3: "good", 5: "amazing", 8: "unstoppable", 10: "legendary"}
-	_play_voice_cue(str(cue_by_level.get(level, "")))
+	var cue := ""
+	if level >= 10:
+		cue = "legendary"
+	elif level >= 8:
+		cue = "unstoppable"
+	elif level >= 5:
+		cue = "amazing"
+	elif level >= 3:
+		cue = "good"
+	if not cue.is_empty():
+		_play_voice_cue(cue)
 
 func _make_sfx_stream(effect: String, note_index: int = 0, combo_index: int = 0) -> AudioStreamWAV:
 	const sample_rate := 48000
@@ -1118,21 +1127,12 @@ func _on_placement_resolved(_placed_cells: Array[Vector2i], _cleared_cells: Arra
 	pass
 
 func _update_combo_streak(cleared: int) -> void:
-	if cleared > 0:
-		combo_missed_placements = 0
-		combo_streak += 1
-		if combo_streak in [3, 5, 8, 10]:
-			_play_combo_voice(combo_streak)
-		return
-	if combo_streak <= 0:
-		combo_streak = 0
-		combo_missed_placements = 0
-		return
-	# Keep the chain alive through three placements that do not clear a line.
-	combo_missed_placements += 1
-	if combo_missed_placements >= 3:
-		combo_streak = 0
-		combo_missed_placements = 0
+	# Combo is the number of complete lines removed by this single placement,
+	# counting both horizontal rows and vertical columns.
+	combo_streak = maxi(cleared, 0)
+	combo_missed_placements = 0
+	if combo_streak >= 3:
+		_play_combo_voice(combo_streak)
 
 
 func _on_combo_triggered(_level: int, _lines: int) -> void:
