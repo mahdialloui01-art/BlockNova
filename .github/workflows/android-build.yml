@@ -25,6 +25,14 @@ jobs:
           python3 -m pip install --disable-pip-version-check piper-tts
           bash scripts/generate_combo_voice_assets.sh
 
+      - name: Publish generated voice preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: BlockNova-Voice-Preview
+          path: assets/audio/voice_*.wav
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Download and stage only the original KayKit model and dependencies
         shell: bash
         run: |
