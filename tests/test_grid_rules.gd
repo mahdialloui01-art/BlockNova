@@ -240,9 +240,9 @@ func _run_tests() -> void:
         return
     game.set("combo_streak", 1)
     game.set("combo_missed_placements", 2)
-    if not _check(int(game.get("score")) == 630, "Two-line clear score must include placement, clear, and combo bonuses"):
+    if not _check(int(game.get("score")) == 755, "Two-line same-placement clear score must include placement, clear, and x2 combo bonuses"):
         return
-    if not _check(int(game.get("daily_best")) >= 630, "Daily challenge best score must persist the current run"):
+    if not _check(int(game.get("daily_best")) >= 755, "Daily challenge best score must persist the current run"):
         return
 
     if not _check(home_ui.has_signal("resume_requested"), "Home screen must expose a resume action"):
