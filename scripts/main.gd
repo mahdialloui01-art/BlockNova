@@ -1,6 +1,6 @@
 extends Control
 
-const GRID := 8
+const GRID := 10
 # Six distinct, vivid jewel tones with a warm premium balance.
 # Keep each index stable: saved boards store color indices, not Color values.
 const COLORS := [
@@ -508,31 +508,27 @@ func _valid_saved_board(value: Variant) -> bool:
 				return false
 	return true
 
-func _shrink_legacy_board(value: Variant) -> Variant:
-	# New versions use 8x8. Keep an older 8x8 save unchanged.
+func _migrate_legacy_board(value: Variant) -> Variant:
+	# Keep native 10x10 sessions intact and expand older 8x8 sessions into the center.
 	if not (value is Array):
 		return value
 	if value.size() == GRID:
 		return value
-	# Older installed builds used 10x10. Keep the centered 8x8 area only
-	# when the discarded outer ring is empty, so no placed blocks disappear.
-	if value.size() != 10:
+	if value.size() != 8:
 		return value
 	for row in value:
-		if not (row is Array) or row.size() != 10:
+		if not (row is Array) or row.size() != 8:
 			return value
-	for i in range(10):
-		if int(value[0][i]) != -1 or int(value[9][i]) != -1:
-			return []
-		if int(value[i][0]) != -1 or int(value[i][9]) != -1:
-			return []
-	var cropped: Array = []
+	var expanded: Array = []
 	for y in range(GRID):
-		var cropped_row: Array = []
+		var expanded_row: Array = []
 		for x in range(GRID):
-			cropped_row.append(value[y + 1][x + 1])
-		cropped.append(cropped_row)
-	return cropped
+			if x >= 1 and x <= 8 and y >= 1 and y <= 8:
+				expanded_row.append(value[y - 1][x - 1])
+			else:
+				expanded_row.append(-1)
+		expanded.append(expanded_row)
+	return expanded
 
 func _valid_saved_pieces(value: Variant) -> bool:
 	if not (value is Array) or value.size() != 3:
@@ -583,8 +579,8 @@ func _restore_saved_session() -> bool:
 	if not _has_saved_session() or int(config.get_value("session", "version", 0)) != 1:
 		return false
 	var saved_board: Variant = config.get_value("session", "board", [])
-	# Convert older 10x10 saves safely; never discard occupied outer cells.
-	saved_board = _shrink_legacy_board(saved_board)
+	# Expand older 8x8 saves into the center of the 10x10 board; preserve native 10x10 saves.
+	saved_board = _migrate_legacy_board(saved_board)
 	var saved_pieces: Variant = config.get_value("session", "pieces", [])
 	var saved_colors: Variant = config.get_value("session", "piece_colors", [])
 	if not _valid_saved_board(saved_board) or not _valid_saved_pieces(saved_pieces):
@@ -644,7 +640,7 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	var w := size.x
 	var h := size.y
-	# Match the reference: a broad, nearly square 8x8 board with generous cell size.
+	# Keep the 10x10 board broad and nearly square while preserving comfortable touch targets.
 	board_size = minf(w * 0.86, h * 0.39)
 	cell = board_size / GRID
 	board_origin = Vector2((w - board_size) * 0.5, h * 0.228)
@@ -669,7 +665,7 @@ func _reset_game() -> void:
 	queue_redraw()
 
 func _new_pieces() -> void:
-	# On the 8x8 board, a random tray can occasionally contain only
+	# On the 10x10 board, a random tray can occasionally contain only
 	# shapes that do not fit even though empty cells remain. Reroll the tray
 	# before declaring game over; this keeps difficulty fair without changing
 	# the seeded daily-challenge sequence for a given run.
