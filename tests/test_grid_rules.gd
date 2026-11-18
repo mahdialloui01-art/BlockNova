@@ -229,14 +229,26 @@ func _run_tests() -> void:
 
     if not _check(int(game.get("combo_streak")) == 2, "A simultaneous row and column clear in one placement must produce combo x2"):
         return
-    game.call("_update_combo_streak", 0)
-    if not _check(int(game.get("combo_streak")) == 0 and int(game.get("combo_missed_placements")) == 0, "Combo must reset after a placement that clears no lines"):
-        return
     game.call("_update_combo_streak", 1)
-    if not _check(int(game.get("combo_streak")) == 1, "A single line cleared in one placement must produce combo x1"):
+    if not _check(int(game.get("combo_streak")) == 3, "A following one-line clear must accumulate to combo x3"):
+        return
+    game.call("_update_combo_streak", 0)
+    game.call("_update_combo_streak", 0)
+    if not _check(int(game.get("combo_streak")) == 3 and int(game.get("combo_missed_placements")) == 2, "Combo must survive the first two pieces that clear no lines"):
+        return
+    game.call("_update_combo_streak", 2)
+    if not _check(int(game.get("combo_streak")) == 5 and int(game.get("combo_missed_placements")) == 0, "A line clear must extend combo and reset the missed-piece counter"):
+        return
+    game.call("_update_combo_streak", 0)
+    game.call("_update_combo_streak", 0)
+    game.call("_update_combo_streak", 0)
+    if not _check(int(game.get("combo_streak")) == 0 and int(game.get("combo_missed_placements")) == 0, "Combo must reset after three consecutive pieces without a line clear"):
         return
     game.call("_update_combo_streak", 3)
-    if not _check(int(game.get("combo_streak")) == 3, "Three lines cleared in one placement must produce combo x3"):
+    if not _check(int(game.get("combo_streak")) == 3, "Clearing three lines together must immediately create combo x3"):
+        return
+    game.call("_update_combo_streak", 4)
+    if not _check(int(game.get("combo_streak")) == 7, "Clearing four lines together must add four to the running combo"):
         return
     if not _check(int(game.call("_combo_score_bonus", 1)) == 50, "Combo x1 bonus must be 50 points"):
         return
