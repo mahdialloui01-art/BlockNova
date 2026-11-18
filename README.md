@@ -14,6 +14,7 @@ An original, mobile-first block puzzle game built with Godot 4.4.1. BlockNova ha
 - Score, consecutive-clear combo streaks, and no-move/game-over detection
 - Pause overlay with resume and return-to-home actions
 - Original procedurally generated sound effects and ambient synth music
+- Optional pre-rendered Arabic Darija combo-announcer cues for combo milestones and game over (Piper ar_JO Kareem voice; phrases written in Algerian Darija)
 - Optional haptic feedback for pickup, invalid moves, placement, and line clears, with a user-controlled setting
 - Deterministic daily challenge: the same local-date seed and piece/color sequence for every replay, with a date-specific best score
 - Persistent best score, sound/settings preferences, and an in-progress game session in Godot's `user://` storage
@@ -30,7 +31,7 @@ The active scene is `res://scenes/main.tscn`, which uses `scripts/main_2_5d.gd` 
 
 ## Automated validation
 
-GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes deterministic regression checks against the actual 2.5D Android scene. The tests verify its 3D viewport and rounded block mesh, deterministic daily challenge seed and date-specific record, Android VIBRATE permission and safe haptic preference guard, plus 10×10 bounds, occupied cells, simultaneous row/column clearing, unique cleared-cell color capture, placement/clear animation cleanup, combo scoring, no-move detection, saved-session round trips, malformed-save rejection, and deterministic RNG continuation after resume. The Android build also inspects the exported manifest for VIBRATE and verifies the APK signature before uploading it.
+GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes deterministic regression checks against the actual 2.5D Android scene. The tests verify its 3D viewport and rounded block mesh, deterministic daily challenge seed and date-specific record, Android VIBRATE permission and safe haptic preference guard, plus 10×10 bounds, occupied cells, simultaneous row/column clearing, unique cleared-cell color capture, placement/clear animation cleanup, combo scoring, no-move detection, native 10×10 save round trips, centered migration of legacy 8×8 saves, malformed-save rejection, generated voice-file presence, and deterministic RNG continuation after resume. The Android build also inspects the exported manifest for VIBRATE and verifies the APK signature before uploading it.
 
 ## Android build status
 
