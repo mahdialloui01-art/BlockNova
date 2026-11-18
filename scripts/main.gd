@@ -1105,6 +1105,7 @@ func _try_place(at: Vector2i) -> void:
 	elif not _any_move():
 		game_over=true
 		_play_sfx("gameover")
+		_play_voice_cue("game_over")
 		_trigger_haptic(72, 0.56)
 	if game_over:
 		_clear_saved_session()
