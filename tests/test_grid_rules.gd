@@ -73,20 +73,20 @@ func _run_tests() -> void:
         return
 
     # Sound effects and music have separate runtime gates.
-    var music_player := game.get("_music_player") as AudioStreamPlayer
+    var background_music_player := game.get("_music_player") as AudioStreamPlayer
     var sfx_players: Dictionary = game.get("_sfx_players")
     var ui_sfx_player := sfx_players.get("ui") as AudioStreamPlayer
     game.set("sound_enabled", false)
     game.set("music_enabled", true)
     game.call("_update_music_state")
     game.call("_play_sfx", "ui")
-    if not _check(not ui_sfx_player.playing and music_player.playing, "Disabling sound effects must not stop background music"):
+    if not _check(not ui_sfx_player.playing and background_music_player.playing, "Disabling sound effects must not stop background music"):
         return
     game.set("sound_enabled", true)
     game.set("music_enabled", false)
     game.call("_update_music_state")
     game.call("_play_sfx", "ui")
-    if not _check(ui_sfx_player.playing and not music_player.playing, "Disabling music must not stop sound effects"):
+    if not _check(ui_sfx_player.playing and not background_music_player.playing, "Disabling music must not stop sound effects"):
         return
     ui_sfx_player.stop()
 
