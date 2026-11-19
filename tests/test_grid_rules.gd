@@ -57,14 +57,35 @@ func _run_tests() -> void:
     if not _check(game_over_voice != null and voice_player.stream == game_over_voice, "Game-over voice cue must load and route correctly"):
         return
     voice_player.stop()
+    var good_voice := loaded_voice_streams.get("good") as AudioStream
     game.set("sound_enabled", false)
+    game.set("voice_enabled", true)
     game.call("_play_voice_cue", "good")
-    if not _check(voice_player.stream == game_over_voice, "Disabling sound must prevent combo voice playback"):
+    if not _check(voice_player.stream == good_voice, "Voice announcer must remain available when music and effects are disabled"):
         return
-    game.call("_play_voice_cue", "good")
-    if not _check(voice_player.stream == game_over_voice, "Disabling sound must prevent combo voice playback"):
+    voice_player.stop()
+    game.set("voice_enabled", false)
+    game.set("sound_enabled", true)
+    game.call("_play_voice_cue", "amazing")
+    if not _check(voice_player.stream == good_voice, "Disabling the announcer must prevent a new voice cue"):
         return
+
+    # Exercise the actual settings hit targets and verify the independent voice preference persists.
+    game.set("screen", 1) # Screen.SETTINGS
+    game.set("voice_enabled", true)
+    game.call("_pointer_down", Vector2(game.size.x * 0.70, game.size.y * 0.54))
+    if not _check(not bool(game.get("voice_enabled")), "Settings voice row must toggle the announcer independently"):
+        return
+    game.call("_pointer_down", Vector2(game.size.x * 0.70, game.size.y * 0.45))
+    if not _check(not bool(game.get("sound_enabled")), "Settings sound row must remain independently controllable"):
+        return
+    var saved_settings := ConfigFile.new()
+    saved_settings.load("user://blocknova.cfg")
+    if not _check(not bool(saved_settings.get_value("settings", "voice", true)), "Voice announcer preference must persist to user settings"):
+        return
+    game.set("screen", 0) # Return to the home scene before later tests initialize a board.
     game.set("sound_enabled", false)
+    game.set("voice_enabled", true)
     if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
         return
     if not _check(game.get("_block_mesh") is Mesh, "The active scene must build its rounded 3D block mesh"):
@@ -438,7 +459,7 @@ func _run_tests() -> void:
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
         return
 
-    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
+    print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, independent voice/sound settings and persistence, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
     # Stop generated music and sound effects before releasing the scene tree.
     for child in game.get_children():
         if child is AudioStreamPlayer:
