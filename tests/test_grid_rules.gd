@@ -59,6 +59,8 @@ func _run_tests() -> void:
     voice_player.stop()
     var good_voice := loaded_voice_streams.get("good") as AudioStream
     game.set("sound_enabled", false)
+    game.set("music_enabled", false)
+    game.call("_update_music_state")
     game.set("voice_enabled", true)
     game.call("_play_voice_cue", "good")
     if not _check(voice_player.stream == good_voice, "Voice announcer must remain available when music and effects are disabled"):
@@ -70,21 +72,50 @@ func _run_tests() -> void:
     if not _check(voice_player.stream == good_voice, "Disabling the announcer must prevent a new voice cue"):
         return
 
-    # Exercise the actual settings hit targets and verify the independent voice preference persists.
-    game.set("screen", 1) # Screen.SETTINGS
-    game.set("voice_enabled", true)
-    game.call("_pointer_down", Vector2(game.size.x * 0.70, game.size.y * 0.54))
-    if not _check(not bool(game.get("voice_enabled")), "Settings voice row must toggle the announcer independently"):
+    # Sound effects and music have separate runtime gates.
+    var music_player := game.get("_music_player") as AudioStreamPlayer
+    var sfx_players: Dictionary = game.get("_sfx_players")
+    var ui_sfx_player := sfx_players.get("ui") as AudioStreamPlayer
+    game.set("sound_enabled", false)
+    game.set("music_enabled", true)
+    game.call("_update_music_state")
+    game.call("_play_sfx", "ui")
+    if not _check(not ui_sfx_player.playing and music_player.playing, "Disabling sound effects must not stop background music"):
         return
+    game.set("sound_enabled", true)
+    game.set("music_enabled", false)
+    game.call("_update_music_state")
+    game.call("_play_sfx", "ui")
+    if not _check(ui_sfx_player.playing and not music_player.playing, "Disabling music must not stop sound effects"):
+        return
+    ui_sfx_player.stop()
+
+    # Exercise all settings hit targets and verify each preference persists.
+    game.set("screen", 1) # Screen.SETTINGS
+    game.set("sound_enabled", true)
+    game.set("music_enabled", true)
+    game.set("voice_enabled", true)
     game.call("_pointer_down", Vector2(game.size.x * 0.70, game.size.y * 0.45))
-    if not _check(not bool(game.get("sound_enabled")), "Settings sound row must remain independently controllable"):
+    if not _check(not bool(game.get("sound_enabled")) and bool(game.get("music_enabled")), "Sound-effects row must not toggle music"):
+        return
+    game.call("_pointer_down", Vector2(game.size.x * 0.70, game.size.y * 0.535))
+    if not _check(not bool(game.get("music_enabled")) and not bool(game.get("sound_enabled")), "Music row must not toggle sound effects"):
+        return
+    game.call("_pointer_down", Vector2(game.size.x * 0.70, game.size.y * 0.62))
+    if not _check(not bool(game.get("voice_enabled")), "Voice row must toggle the announcer independently"):
         return
     var saved_settings := ConfigFile.new()
     saved_settings.load("user://blocknova.cfg")
-    if not _check(not bool(saved_settings.get_value("settings", "voice", true)), "Voice announcer preference must persist to user settings"):
+    if not _check(not bool(saved_settings.get_value("settings", "sound", true)), "Sound-effects preference must persist"):
+        return
+    if not _check(not bool(saved_settings.get_value("settings", "music", true)), "Music preference must persist"):
+        return
+    if not _check(not bool(saved_settings.get_value("settings", "voice", true)), "Voice preference must persist"):
         return
     game.set("screen", 0) # Return to the home scene before later tests initialize a board.
     game.set("sound_enabled", false)
+    game.set("music_enabled", false)
+    game.call("_update_music_state")
     game.set("voice_enabled", true)
     if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
         return
