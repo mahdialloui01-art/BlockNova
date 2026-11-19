@@ -83,7 +83,7 @@ func _run_tests() -> void:
     saved_settings.load("user://blocknova.cfg")
     if not _check(not bool(saved_settings.get_value("settings", "voice", true)), "Voice announcer preference must persist to user settings"):
         return
-    game.set("screen", 2) # Screen.PLAYING
+    game.set("screen", 0) # Return to the home scene before later tests initialize a board.
     game.set("sound_enabled", false)
     game.set("voice_enabled", true)
     if not _check(game.get("_viewport") is SubViewport, "The active scene must initialize its 3D viewport"):
