@@ -43,7 +43,8 @@ var board_size := 0.0
 var tray_y := 0.0
 var font: Font
 var use_3d_visuals := false
-var sound_enabled := true
+var sound_enabled := true # Sound effects
+var music_enabled := true
 var voice_enabled := true
 var vibration_enabled := true
 var daily_mode := false
@@ -181,7 +182,7 @@ func _make_music_stream() -> AudioStreamWAV:
 func _update_music_state() -> void:
 	if not is_instance_valid(_music_player):
 		return
-	if sound_enabled:
+	if music_enabled:
 		if not _music_player.playing:
 			_music_player.play()
 	else:
@@ -422,6 +423,8 @@ func _load_settings() -> void:
 	config.load("user://blocknova.cfg")
 	best = int(config.get_value("records", "best", 0))
 	sound_enabled = bool(config.get_value("settings", "sound", true))
+	# Older saves had one combined sound switch; preserve its value for music.
+	music_enabled = bool(config.get_value("settings", "music", sound_enabled))
 	voice_enabled = bool(config.get_value("settings", "voice", true))
 	vibration_enabled = bool(config.get_value("settings", "vibration", true))
 
@@ -481,6 +484,7 @@ func _on_home_settings() -> void:
 func _save_settings() -> void:
 	config.set_value("records", "best", best)
 	config.set_value("settings", "sound", sound_enabled)
+	config.set_value("settings", "music", music_enabled)
 	config.set_value("settings", "voice", voice_enabled)
 	config.set_value("settings", "vibration", vibration_enabled)
 	config.save("user://blocknova.cfg")
@@ -739,16 +743,18 @@ func _draw_settings() -> void:
 	var h := size.y
 	_draw_text("SETTINGS",Vector2(0,h*0.20),31,Color("#FFF9EF"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_text("MAKE THE EXPERIENCE YOURS",Vector2(0,h*0.235),11,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,700),Color("#141F39"),24)
+	_draw_panel(Rect2(w*0.08,h*0.285,w*0.84,h*0.46),Color("#141F39"),24)
 	_draw_text("HAPTIC FEEDBACK",Vector2(w*0.14,h*0.355),14,Color("#C7D2EA"))
 	_draw_button(Rect2(w*0.66,h*0.33,w*0.20,42),"ON" if vibration_enabled else "OFF",Color("#27BBD4") if vibration_enabled else Color("#34415D"))
-	_draw_text("SOUND & MUSIC",Vector2(w*0.14,h*0.445),14,Color("#C7D2EA"))
-	_draw_button(Rect2(w*0.66,h*0.42,w*0.20,42),"ON" if sound_enabled else "OFF",Color("#8B6CFF") if sound_enabled else Color("#34415D"))
-	_draw_text("VOICE ANNOUNCER",Vector2(w*0.14,h*0.535),14,Color("#C7D2EA"))
-	_draw_button(Rect2(w*0.66,h*0.51,w*0.20,42),"ON" if voice_enabled else "OFF",Color("#E6A83C") if voice_enabled else Color("#34415D"))
-	_draw_text("Music & effects and the announcer are controlled separately",Vector2(0,h*0.625),11,Color("#8294B8"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("PERSONAL BEST     "+str(best),Vector2(0,h*0.70),15,Color("#F5D77B"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_button(Rect2(w*0.14,h*0.76,w*0.72,58),"BACK",Color("#8B6CFF"))
+	_draw_text("SOUND EFFECTS",Vector2(w*0.14,h*0.435),14,Color("#C7D2EA"))
+	_draw_button(Rect2(w*0.66,h*0.415,w*0.20,42),"ON" if sound_enabled else "OFF",Color("#8B6CFF") if sound_enabled else Color("#34415D"))
+	_draw_text("BACKGROUND MUSIC",Vector2(w*0.14,h*0.52),14,Color("#C7D2EA"))
+	_draw_button(Rect2(w*0.66,h*0.50,w*0.20,42),"ON" if music_enabled else "OFF",Color("#28B8E8") if music_enabled else Color("#34415D"))
+	_draw_text("VOICE ANNOUNCER",Vector2(w*0.14,h*0.605),14,Color("#C7D2EA"))
+	_draw_button(Rect2(w*0.66,h*0.585,w*0.20,42),"ON" if voice_enabled else "OFF",Color("#E6A83C") if voice_enabled else Color("#34415D"))
+	_draw_text("Music, effects and voice can be controlled independently",Vector2(0,h*0.68),11,Color("#8294B8"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_text("PERSONAL BEST     "+str(best),Vector2(0,h*0.735),15,Color("#F5D77B"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	_draw_button(Rect2(w*0.14,h*0.78,w*0.72,58),"BACK",Color("#8B6CFF"))
 
 func _draw_game() -> void:
 	var w := size.x
@@ -936,13 +942,16 @@ func _pointer_down(pos: Vector2) -> void:
 			if pos.y >= h*0.32 and pos.y <= h*0.40 and pos.x >= w*0.60:
 				_play_sfx("ui")
 				vibration_enabled = not vibration_enabled
-			elif pos.y >= h*0.41 and pos.y <= h*0.49 and pos.x >= w*0.60:
+			elif pos.y >= h*0.405 and pos.y <= h*0.48 and pos.x >= w*0.60:
 				_play_sfx("ui")
 				sound_enabled = not sound_enabled
-			elif pos.y >= h*0.50 and pos.y <= h*0.58 and pos.x >= w*0.60:
+			elif pos.y >= h*0.49 and pos.y <= h*0.565 and pos.x >= w*0.60:
+				_play_sfx("ui")
+				music_enabled = not music_enabled
+			elif pos.y >= h*0.575 and pos.y <= h*0.65 and pos.x >= w*0.60:
 				_play_sfx("ui")
 				voice_enabled = not voice_enabled
-			elif pos.y >= h*0.73:
+			elif pos.y >= h*0.77:
 				_play_sfx("ui")
 				screen=Screen.HOME
 			_save_settings()
