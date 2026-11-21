@@ -40,6 +40,43 @@ func _run_tests() -> void:
     game.call("_update_music_state")
     if not _check(bool(game.get("sound_enabled")) and bool(game.get("music_enabled")), "Legacy SOUND ON must migrate to effects ON and music ON"):
         return
+    
+    # Daily streaks advance once per completed local calendar day.
+    if not _check(int(game.call("_date_ordinal", "2028-02-29")) > 0 and int(game.call("_date_ordinal", "2027-02-29")) == -1, "Gregorian leap days must be validated correctly"):
+        return
+    if not _check(int(game.call("_date_ordinal", "2026-02-30")) == -1 and int(game.call("_date_ordinal", "bad-date")) == -1, "Malformed calendar dates must be rejected"):
+        return
+    if not _check(int(game.call("_next_daily_streak", 0, "", "2026-11-20")) == 1, "The first completed daily challenge must start a one-day streak"):
+        return
+    if not _check(int(game.call("_next_daily_streak", 4, "2026-11-20", "2026-11-20")) == 4, "Repeating a completed challenge on the same date must not increase the streak"):
+        return
+    if not _check(int(game.call("_next_daily_streak", 4, "2026-11-20", "2026-11-21")) == 5, "Completing the next calendar day must extend the streak"):
+        return
+    if not _check(int(game.call("_next_daily_streak", 4, "2026-11-19", "2026-11-21")) == 1, "Missing a calendar day must reset the streak"):
+        return
+    if not _check(int(game.call("_next_daily_streak", 2, "2026-01-31", "2026-02-01")) == 3 and int(game.call("_next_daily_streak", 2, "2025-12-31", "2026-01-01")) == 3, "Streaks must continue across month and year boundaries"):
+        return
+    if not _check(int(game.call("_next_daily_streak", 2, "2028-02-28", "2028-02-29")) == 3 and int(game.call("_next_daily_streak", 3, "2028-02-29", "2028-03-01")) == 4, "Streaks must handle leap-day transitions"):
+        return
+    if not _check(home_ui.has_method("set_daily_streak") and home_ui.get_node_or_null("FullScreenHome/DailyStreakLabel") != null, "Home screen must expose the daily streak indicator"):
+        return
+    game.set("daily_mode", true)
+    game.set("daily_streak", 2)
+    game.set("daily_last_completed_date", "2026-11-19")
+    game.set("daily_date_key", "2026-11-20")
+    game.call("_record_daily_completion")
+    if not _check(int(game.get("daily_streak")) == 3 and str(game.get("daily_last_completed_date")) == "2026-11-20", "Completing today's challenge must persist the incremented streak and date"):
+        return
+    game.call("_record_daily_completion")
+    if not _check(int(game.get("daily_streak")) == 3, "Recording the same daily completion twice must not double-count it"):
+        return
+    var streak_config := ConfigFile.new()
+    if not _check(streak_config.load("user://blocknova.cfg") == OK and int(streak_config.get_value("daily_progress", "streak", 0)) == 3 and str(streak_config.get_value("daily_progress", "last_completed_date", "")) == "2026-11-20", "Daily streak and completion date must survive a config reload"):
+        return
+    game.set("daily_mode", false)
+    game.set("daily_date_key", "")
+    game.set("daily_streak", 3)
+    home_ui.call("set_daily_streak", 3)
 
     # Verify the raw WAV contract as well as Godot's ability to load each cue.
     var required_voice_assets := [
