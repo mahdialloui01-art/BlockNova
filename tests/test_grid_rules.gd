@@ -18,6 +18,9 @@ func _run_tests() -> void:
         return
     root.add_child(game)
     await process_frame
+    var home_ui: CanvasLayer = game.get("home_ui") as CanvasLayer
+    if not _check(home_ui != null, "Active game must initialize the home UI before streak assertions"):
+        return
 
     # Older installations stored one combined sound preference. When the new
     # music key is absent, both independent channels must inherit that value.
