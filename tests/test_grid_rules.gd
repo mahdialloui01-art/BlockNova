@@ -54,6 +54,10 @@ func _run_tests() -> void:
         return
     if not _check(int(game.call("_next_daily_streak", 4, "2026-11-19", "2026-11-21")) == 1, "Missing a calendar day must reset the streak"):
         return
+    if not _check(int(game.call("_daily_streak_for_today", 5, "2026-11-20", "2026-11-20")) == 5 and int(game.call("_daily_streak_for_today", 5, "2026-11-20", "2026-11-21")) == 5, "An active streak must remain visible on its completion day and the following day"):
+        return
+    if not _check(int(game.call("_daily_streak_for_today", 5, "2026-11-19", "2026-11-21")) == 0 and int(game.call("_daily_streak_for_today", 5, "bad-date", "2026-11-21")) == 0, "A missed day or invalid date must not display a stale streak"):
+        return
     if not _check(int(game.call("_next_daily_streak", 2, "2026-01-31", "2026-02-01")) == 3 and int(game.call("_next_daily_streak", 2, "2025-12-31", "2026-01-01")) == 3, "Streaks must continue across month and year boundaries"):
         return
     if not _check(int(game.call("_next_daily_streak", 2, "2028-02-28", "2028-02-29")) == 3 and int(game.call("_next_daily_streak", 3, "2028-02-29", "2028-03-01")) == 4, "Streaks must handle leap-day transitions"):
