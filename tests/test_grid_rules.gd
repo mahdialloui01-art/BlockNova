@@ -18,8 +18,8 @@ func _run_tests() -> void:
         return
     root.add_child(game)
     await process_frame
-    var home_ui: CanvasLayer = game.get("home_ui") as CanvasLayer
-    if not _check(home_ui != null, "Active game must initialize the home UI before streak assertions"):
+    var daily_home_ui: CanvasLayer = game.get("daily_home_ui") as CanvasLayer
+    if not _check(daily_home_ui != null, "Active game must initialize the home UI before streak assertions"):
         return
 
     # Older installations stored one combined sound preference. When the new
@@ -65,7 +65,7 @@ func _run_tests() -> void:
         return
     if not _check(int(game.call("_next_daily_streak", 2, "2028-02-28", "2028-02-29")) == 3 and int(game.call("_next_daily_streak", 3, "2028-02-29", "2028-03-01")) == 4, "Streaks must handle leap-day transitions"):
         return
-    if not _check(home_ui.has_method("set_daily_streak") and home_ui.get_node_or_null("FullScreenHome/DailyStreakLabel") != null, "Home screen must expose the daily streak indicator"):
+    if not _check(daily_home_ui.has_method("set_daily_streak") and daily_home_ui.get_node_or_null("FullScreenHome/DailyStreakLabel") != null, "Home screen must expose the daily streak indicator"):
         return
     game.set("daily_mode", true)
     game.set("daily_streak", 2)
@@ -83,7 +83,7 @@ func _run_tests() -> void:
     game.set("daily_mode", false)
     game.set("daily_date_key", "")
     game.set("daily_streak", 3)
-    home_ui.call("set_daily_streak", 3)
+    daily_home_ui.call("set_daily_streak", 3)
 
     # Verify the raw WAV contract as well as Godot's ability to load each cue.
     var required_voice_assets := [
