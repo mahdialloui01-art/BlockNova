@@ -50,6 +50,8 @@ var vibration_enabled := true
 var daily_mode := false
 var daily_date_key := ""
 var daily_best := 0
+var daily_streak := 0
+var daily_last_completed_date := ""
 var config: ConfigFile
 var game_rng := RandomNumberGenerator.new()
 var home_ui: CanvasLayer
@@ -427,6 +429,13 @@ func _load_settings() -> void:
 	music_enabled = bool(config.get_value("settings", "music", sound_enabled))
 	voice_enabled = bool(config.get_value("settings", "voice", true))
 	vibration_enabled = bool(config.get_value("settings", "vibration", true))
+	daily_streak = clampi(int(config.get_value("daily_progress", "streak", 0)), 0, 999999)
+	daily_last_completed_date = str(config.get_value("daily_progress", "last_completed_date", ""))
+	if _date_ordinal(daily_last_completed_date) < 0:
+		daily_streak = 0
+		daily_last_completed_date = ""
+	else:
+		daily_streak = _daily_streak_for_today(daily_streak, daily_last_completed_date, _current_date_key())
 
 	if is_instance_valid(home_ui):
 		home_ui.set("best_score", best)
@@ -437,6 +446,7 @@ func _setup_home_ui() -> void:
 	home_ui.name = "ProfessionalHomeUI"
 	add_child(home_ui)
 	home_ui.set("best_score", best)
+	home_ui.call("set_daily_streak", daily_streak)
 	home_ui.connect("play_requested", Callable(self, "_on_home_play"))
 	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
 	home_ui.connect("daily_challenge_requested", Callable(self, "_on_home_daily_challenge"))
@@ -466,6 +476,69 @@ func _seed_daily_challenge() -> void:
 	daily_date_key = "%04d-%02d-%02d" % [int(date["year"]), int(date["month"]), int(date["day"])]
 	game_rng.seed = int(date["year"]) * 10000 + int(date["month"]) * 100 + int(date["day"])
 	daily_best = int(config.get_value("daily_records", daily_date_key, 0))
+
+func _date_ordinal(date_key: String) -> int:
+	# Convert an ISO local-calendar date to a Gregorian day number without
+	# timezone/DST arithmetic, so month, year, and leap-day boundaries are stable.
+	var parts := date_key.split("-")
+	if parts.size() != 3 or parts[0].length() != 4 or parts[1].length() != 2 or parts[2].length() != 2:
+		return -1
+	for part in parts:
+		if not part.is_valid_int():
+			return -1
+	var year := int(parts[0])
+	var month := int(parts[1])
+	var day := int(parts[2])
+	if year < 1 or month < 1 or month > 12:
+		return -1
+	var leap_year := year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+	var month_days := [31, 29 if leap_year else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+	if day < 1 or day > int(month_days[month - 1]):
+		return -1
+	var previous_year := year - 1
+	var ordinal := 365 * previous_year
+	ordinal += floori(float(previous_year) / 4.0)
+	ordinal -= floori(float(previous_year) / 100.0)
+	ordinal += floori(float(previous_year) / 400.0)
+	for month_index in range(month - 1):
+		ordinal += int(month_days[month_index])
+	return ordinal + day
+
+func _next_daily_streak(current_streak: int, last_date: String, completed_date: String) -> int:
+	var completed_ordinal := _date_ordinal(completed_date)
+	if completed_ordinal < 0:
+		return maxi(current_streak, 0)
+	var last_ordinal := _date_ordinal(last_date)
+	if last_ordinal == completed_ordinal:
+		return maxi(current_streak, 0)
+	if last_ordinal == completed_ordinal - 1:
+		return maxi(current_streak, 0) + 1
+	return 1
+
+func _daily_streak_for_today(streak: int, last_date: String, today_date: String) -> int:
+	var last_ordinal := _date_ordinal(last_date)
+	var today_ordinal := _date_ordinal(today_date)
+	if last_ordinal < 0 or today_ordinal < 0:
+		return 0
+	# Keep the streak visible on the completion date and during the next day.
+	# Once a full calendar day is missed, do not display a stale active streak.
+	if last_ordinal == today_ordinal or last_ordinal == today_ordinal - 1:
+		return maxi(streak, 0)
+	return 0
+
+func _record_daily_completion() -> void:
+	if not daily_mode or daily_date_key.is_empty() or config == null:
+		return
+	# Replaying today's challenge must never award the same calendar day twice.
+	if daily_last_completed_date == daily_date_key:
+		return
+	daily_streak = _next_daily_streak(daily_streak, daily_last_completed_date, daily_date_key)
+	daily_last_completed_date = daily_date_key
+	config.set_value("daily_progress", "streak", daily_streak)
+	config.set_value("daily_progress", "last_completed_date", daily_last_completed_date)
+	config.save("user://blocknova.cfg")
+	if is_instance_valid(home_ui):
+		home_ui.call("set_daily_streak", daily_streak)
 
 func _restart_current_mode() -> void:
 	if daily_mode:
@@ -1129,6 +1202,7 @@ func _try_place(at: Vector2i) -> void:
 		_play_voice_cue("game_over")
 		_trigger_haptic(72, 0.56)
 	if game_over:
+		_record_daily_completion()
 		_clear_saved_session()
 	else:
 		_save_session()
