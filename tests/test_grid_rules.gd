@@ -18,6 +18,29 @@ func _run_tests() -> void:
         return
     root.add_child(game)
     await process_frame
+
+    # Older installations stored one combined sound preference. When the new
+    # music key is absent, both independent channels must inherit that value.
+    var legacy_audio_config := ConfigFile.new()
+    legacy_audio_config.set_value("records", "best", int(game.get("best")))
+    legacy_audio_config.set_value("settings", "sound", false)
+    legacy_audio_config.set_value("settings", "voice", true)
+    legacy_audio_config.set_value("settings", "vibration", true)
+    if not _check(legacy_audio_config.save("user://blocknova.cfg") == OK, "Legacy audio settings must be writable for migration coverage"):
+        return
+    game.call("_load_settings")
+    game.call("_update_music_state")
+    if not _check(not bool(game.get("sound_enabled")) and not bool(game.get("music_enabled")), "Legacy SOUND OFF must migrate to effects OFF and music OFF"):
+        return
+
+    legacy_audio_config.set_value("settings", "sound", true)
+    if not _check(legacy_audio_config.save("user://blocknova.cfg") == OK, "Updated legacy audio settings must be writable"):
+        return
+    game.call("_load_settings")
+    game.call("_update_music_state")
+    if not _check(bool(game.get("sound_enabled")) and bool(game.get("music_enabled")), "Legacy SOUND ON must migrate to effects ON and music ON"):
+        return
+
     # Verify the raw WAV contract as well as Godot's ability to load each cue.
     var required_voice_assets := [
         "res://assets/audio/voice_good.wav",
