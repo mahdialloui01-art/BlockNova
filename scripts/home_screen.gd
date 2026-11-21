@@ -13,6 +13,8 @@ var _play_button: Button
 var _daily_button: Button
 var _settings_button: Button
 var _best_panel: PanelContainer
+var _daily_streak_label: Label
+var daily_streak: int = 0
 
 const INK := Color("#F3F6FF")
 const MUTED := Color("#A9B5D2")
@@ -76,9 +78,22 @@ func _build() -> void:
 	feature.add_theme_color_override("font_color", Color("#9AA9CE"))
 	feature.anchor_left = 0.04
 	feature.anchor_right = 0.96
-	feature.anchor_top = 0.66
-	feature.anchor_bottom = 0.695
+	feature.anchor_top = 0.625
+	feature.anchor_bottom = 0.655
 	root.add_child(feature)
+
+	var streak := Label.new()
+	streak.name = "DailyStreakLabel"
+	streak.text = "✦  DAILY STREAK  0 DAYS"
+	streak.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	streak.add_theme_font_size_override("font_size", 12)
+	streak.add_theme_color_override("font_color", Color("#F5D77B"))
+	streak.anchor_left = 0.08
+	streak.anchor_right = 0.92
+	streak.anchor_top = 0.66
+	streak.anchor_bottom = 0.695
+	root.add_child(streak)
+	_daily_streak_label = streak
 
 	var resume := _make_button("↻   RESUME LAST GAME", Color("#FFC857"), Color("#B78328"), Color("#241A05"))
 	resume.name = "ResumeButton"
@@ -195,6 +210,12 @@ func set_best_score(value: int) -> void:
 	best_score = value
 	if is_instance_valid(_best_label):
 		_best_label.text = "✦  PERSONAL BEST     %s" % best_score
+
+func set_daily_streak(value: int) -> void:
+	daily_streak = maxi(value, 0)
+	if is_instance_valid(_daily_streak_label):
+		var unit := "DAY" if daily_streak == 1 else "DAYS"
+		_daily_streak_label.text = "✦  DAILY STREAK  %d %s" % [daily_streak, unit]
 
 func set_ui_visible(value: bool) -> void:
 	if is_instance_valid(_root_control):
