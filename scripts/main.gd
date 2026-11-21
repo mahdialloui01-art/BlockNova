@@ -434,6 +434,8 @@ func _load_settings() -> void:
 	if _date_ordinal(daily_last_completed_date) < 0:
 		daily_streak = 0
 		daily_last_completed_date = ""
+	else:
+		daily_streak = _daily_streak_for_today(daily_streak, daily_last_completed_date, _current_date_key())
 
 	if is_instance_valid(home_ui):
 		home_ui.set("best_score", best)
@@ -512,6 +514,17 @@ func _next_daily_streak(current_streak: int, last_date: String, completed_date: 
 	if last_ordinal == completed_ordinal - 1:
 		return maxi(current_streak, 0) + 1
 	return 1
+
+func _daily_streak_for_today(streak: int, last_date: String, today_date: String) -> int:
+	var last_ordinal := _date_ordinal(last_date)
+	var today_ordinal := _date_ordinal(today_date)
+	if last_ordinal < 0 or today_ordinal < 0:
+		return 0
+	# Keep the streak visible on the completion date and during the next day.
+	# Once a full calendar day is missed, do not display a stale active streak.
+	if last_ordinal == today_ordinal or last_ordinal == today_ordinal - 1:
+		return maxi(streak, 0)
+	return 0
 
 func _record_daily_completion() -> void:
 	if not daily_mode or daily_date_key.is_empty() or config == null:
