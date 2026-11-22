@@ -18,7 +18,7 @@ func _run_tests() -> void:
         return
     root.add_child(game)
     await process_frame
-    var daily_home_ui: CanvasLayer = game.get("daily_home_ui") as CanvasLayer
+    var daily_home_ui: CanvasLayer = game.get("home_ui") as CanvasLayer
     if not _check(daily_home_ui != null, "Active game must initialize the home UI before streak assertions"):
         return
 
