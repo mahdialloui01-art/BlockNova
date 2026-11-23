@@ -65,7 +65,9 @@ func _run_tests() -> void:
         return
     if not _check(int(game.call("_next_daily_streak", 2, "2028-02-28", "2028-02-29")) == 3 and int(game.call("_next_daily_streak", 3, "2028-02-29", "2028-03-01")) == 4, "Streaks must handle leap-day transitions"):
         return
-    if not _check(daily_home_ui.has_method("set_daily_streak") and daily_home_ui.get_node_or_null("FullScreenHome/DailyStreakLabel") != null, "Home screen must expose the daily streak indicator"):
+    if not _check(int(game.call("_daily_reward_count", 2)) == 0 and int(game.call("_daily_reward_count", 3)) == 1 and int(game.call("_daily_reward_count", 7)) == 2 and int(game.call("_daily_reward_count", 30)) == 3, "Daily rewards must unlock at 3, 7, and 30 best-streak days"):
+        return
+    if not _check(daily_home_ui.has_method("set_daily_progress") and daily_home_ui.get_node_or_null("FullScreenHome/DailyStreakLabel") != null, "Home screen must expose daily streak and reward progress"):
         return
     game.set("daily_mode", true)
     game.set("daily_streak", 2)
@@ -78,12 +80,28 @@ func _run_tests() -> void:
     if not _check(int(game.get("daily_streak")) == 3, "Recording the same daily completion twice must not double-count it"):
         return
     var streak_config := ConfigFile.new()
-    if not _check(streak_config.load("user://blocknova.cfg") == OK and int(streak_config.get_value("daily_progress", "streak", 0)) == 3 and str(streak_config.get_value("daily_progress", "last_completed_date", "")) == "2026-11-20", "Daily streak and completion date must survive a config reload"):
+    if not _check(streak_config.load("user://blocknova.cfg") == OK and int(streak_config.get_value("daily_progress", "streak", 0)) == 3 and int(streak_config.get_value("daily_progress", "best_streak", 0)) == 3 and str(streak_config.get_value("daily_progress", "last_completed_date", "")) == "2026-11-20", "Current and best daily streaks must survive a config reload"):
+        return
+    var streak_label := daily_home_ui.get_node("FullScreenHome/DailyStreakLabel") as Label
+    if not _check(streak_label != null and streak_label.text.contains("REWARDS 1/3"), "Home screen must show the first unlocked reward"):
+        return
+    daily_home_ui.call("set_daily_progress", 30, 30)
+    if not _check(streak_label.text.contains("BEST 30D") and streak_label.text.contains("REWARDS 3/3"), "Home screen must show all rewards unlocked at a 30-day best streak"):
+        return
+    # A missed day resets the active streak but must never erase earned rewards.
+    var expired_progress := ConfigFile.new()
+    expired_progress.set_value("daily_progress", "streak", 12)
+    expired_progress.set_value("daily_progress", "best_streak", 30)
+    expired_progress.set_value("daily_progress", "last_completed_date", "2000-01-01")
+    if not _check(expired_progress.save("user://blocknova.cfg") == OK, "Expired streak fixture must be saved"):
+        return
+    game.call("_load_settings")
+    if not _check(int(game.get("daily_streak")) == 0 and int(game.get("daily_best_streak")) == 30, "Missing a day must reset the active streak while preserving earned milestone rewards"):
         return
     game.set("daily_mode", false)
     game.set("daily_date_key", "")
     game.set("daily_streak", 3)
-    daily_home_ui.call("set_daily_streak", 3)
+    daily_home_ui.call("set_daily_progress", 3, 30)
 
     # Verify the raw WAV contract as well as Godot's ability to load each cue.
     var required_voice_assets := [
