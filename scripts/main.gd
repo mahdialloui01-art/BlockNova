@@ -51,6 +51,7 @@ var daily_mode := false
 var daily_date_key := ""
 var daily_best := 0
 var daily_streak := 0
+var daily_best_streak := 0
 var daily_last_completed_date := ""
 var config: ConfigFile
 var game_rng := RandomNumberGenerator.new()
@@ -429,7 +430,9 @@ func _load_settings() -> void:
 	music_enabled = bool(config.get_value("settings", "music", sound_enabled))
 	voice_enabled = bool(config.get_value("settings", "voice", true))
 	vibration_enabled = bool(config.get_value("settings", "vibration", true))
-	daily_streak = clampi(int(config.get_value("daily_progress", "streak", 0)), 0, 999999)
+	var saved_daily_streak := clampi(int(config.get_value("daily_progress", "streak", 0)), 0, 999999)
+	daily_streak = saved_daily_streak
+	daily_best_streak = clampi(int(config.get_value("daily_progress", "best_streak", saved_daily_streak)), saved_daily_streak, 999999)
 	daily_last_completed_date = str(config.get_value("daily_progress", "last_completed_date", ""))
 	if _date_ordinal(daily_last_completed_date) < 0:
 		daily_streak = 0
@@ -439,6 +442,7 @@ func _load_settings() -> void:
 
 	if is_instance_valid(home_ui):
 		home_ui.set("best_score", best)
+		home_ui.call("set_daily_progress", daily_streak, daily_best_streak)
 
 func _setup_home_ui() -> void:
 	var ui_script = load("res://scripts/home_screen.gd")
@@ -446,7 +450,7 @@ func _setup_home_ui() -> void:
 	home_ui.name = "ProfessionalHomeUI"
 	add_child(home_ui)
 	home_ui.set("best_score", best)
-	home_ui.call("set_daily_streak", daily_streak)
+	home_ui.call("set_daily_progress", daily_streak, daily_best_streak)
 	home_ui.connect("play_requested", Callable(self, "_on_home_play"))
 	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
 	home_ui.connect("daily_challenge_requested", Callable(self, "_on_home_daily_challenge"))
@@ -526,6 +530,13 @@ func _daily_streak_for_today(streak: int, last_date: String, today_date: String)
 		return maxi(streak, 0)
 	return 0
 
+func _daily_reward_count(best_streak: int) -> int:
+	var unlocked := 0
+	for milestone in [3, 7, 30]:
+		if best_streak >= milestone:
+			unlocked += 1
+	return unlocked
+
 func _record_daily_completion() -> void:
 	if not daily_mode or daily_date_key.is_empty() or config == null:
 		return
@@ -533,12 +544,14 @@ func _record_daily_completion() -> void:
 	if daily_last_completed_date == daily_date_key:
 		return
 	daily_streak = _next_daily_streak(daily_streak, daily_last_completed_date, daily_date_key)
+	daily_best_streak = maxi(daily_best_streak, daily_streak)
 	daily_last_completed_date = daily_date_key
 	config.set_value("daily_progress", "streak", daily_streak)
+	config.set_value("daily_progress", "best_streak", daily_best_streak)
 	config.set_value("daily_progress", "last_completed_date", daily_last_completed_date)
 	config.save("user://blocknova.cfg")
 	if is_instance_valid(home_ui):
-		home_ui.call("set_daily_streak", daily_streak)
+		home_ui.call("set_daily_progress", daily_streak, daily_best_streak)
 
 func _restart_current_mode() -> void:
 	if daily_mode:
