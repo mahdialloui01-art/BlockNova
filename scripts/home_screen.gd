@@ -15,6 +15,7 @@ var _settings_button: Button
 var _best_panel: PanelContainer
 var _daily_streak_label: Label
 var daily_streak: int = 0
+var daily_best_streak: int = 0
 
 const INK := Color("#F3F6FF")
 const MUTED := Color("#A9B5D2")
@@ -211,11 +212,16 @@ func set_best_score(value: int) -> void:
 	if is_instance_valid(_best_label):
 		_best_label.text = "✦  PERSONAL BEST     %s" % best_score
 
-func set_daily_streak(value: int) -> void:
-	daily_streak = maxi(value, 0)
+func set_daily_progress(current_streak: int, best_streak: int) -> void:
+	daily_streak = maxi(current_streak, 0)
+	daily_best_streak = maxi(maxi(best_streak, 0), daily_streak)
 	if is_instance_valid(_daily_streak_label):
-		var unit := "DAY" if daily_streak == 1 else "DAYS"
-		_daily_streak_label.text = "✦  DAILY STREAK  %d %s" % [daily_streak, unit]
+		var unlocked := int(daily_best_streak >= 3) + int(daily_best_streak >= 7) + int(daily_best_streak >= 30)
+		_daily_streak_label.text = "✦  STREAK %dD  •  BEST %dD  •  REWARDS %d/3" % [daily_streak, daily_best_streak, unlocked]
+
+func set_daily_streak(value: int) -> void:
+	# Keep the original setter available for existing callers and older tests.
+	set_daily_progress(value, daily_best_streak)
 
 func set_ui_visible(value: bool) -> void:
 	if is_instance_valid(_root_control):
