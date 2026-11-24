@@ -14,6 +14,10 @@ var _daily_button: Button
 var _settings_button: Button
 var _best_panel: PanelContainer
 var _daily_streak_label: Label
+var _daily_rewards_button: Button
+var _daily_rewards_overlay: Control
+var _daily_rewards_detail: Label
+var _daily_reward_labels: Dictionary = {}
 var daily_streak: int = 0
 var daily_best_streak: int = 0
 
@@ -85,16 +89,27 @@ func _build() -> void:
 
 	var streak := Label.new()
 	streak.name = "DailyStreakLabel"
-	streak.text = "✦  DAILY STREAK  0 DAYS"
+	streak.text = "✦  STREAK 0D  •  BEST 0D"
 	streak.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	streak.add_theme_font_size_override("font_size", 12)
+	streak.add_theme_font_size_override("font_size", 11)
 	streak.add_theme_color_override("font_color", Color("#F5D77B"))
-	streak.anchor_left = 0.08
-	streak.anchor_right = 0.92
+	streak.anchor_left = 0.05
+	streak.anchor_right = 0.66
 	streak.anchor_top = 0.66
 	streak.anchor_bottom = 0.695
 	root.add_child(streak)
 	_daily_streak_label = streak
+
+	var rewards := _make_button("✦  REWARDS 0/3", Color("#F5D77B"), Color("#A77E2B"), Color("#241A05"))
+	rewards.name = "DailyRewardsButton"
+	rewards.anchor_left = 0.68
+	rewards.anchor_right = 0.95
+	rewards.anchor_top = 0.66
+	rewards.anchor_bottom = 0.695
+	rewards.add_theme_font_size_override("font_size", 10)
+	rewards.pressed.connect(_open_daily_rewards)
+	root.add_child(rewards)
+	_daily_rewards_button = rewards
 
 	var resume := _make_button("↻   RESUME LAST GAME", Color("#FFC857"), Color("#B78328"), Color("#241A05"))
 	resume.name = "ResumeButton"
@@ -147,6 +162,105 @@ func _build() -> void:
 	best_panel.add_child(_best_label)
 	_best_panel = best_panel
 	_layout_action_buttons()
+	_build_daily_rewards_overlay(root)
+
+func _build_daily_rewards_overlay(root: Control) -> void:
+	var overlay := Control.new()
+	overlay.name = "DailyRewardsOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.visible = false
+	root.add_child(overlay)
+	_daily_rewards_overlay = overlay
+
+	var backdrop := ColorRect.new()
+	backdrop.name = "Backdrop"
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.color = Color(0.015, 0.025, 0.055, 0.82)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(backdrop)
+
+	var panel := PanelContainer.new()
+	panel.name = "DailyRewardsPanel"
+	panel.anchor_left = 0.08
+	panel.anchor_right = 0.92
+	panel.anchor_top = 0.315
+	panel.anchor_bottom = 0.685
+	var panel_style := _panel_style(PANEL, Color("#52658F"), 24, 2)
+	panel_style.content_margin_left = 24
+	panel_style.content_margin_right = 24
+	panel_style.content_margin_top = 20
+	panel_style.content_margin_bottom = 20
+	panel.add_theme_stylebox_override("panel", panel_style)
+	overlay.add_child(panel)
+
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.add_theme_constant_override("separation", 10)
+	panel.add_child(content)
+
+	var heading := Label.new()
+	heading.text = "DAILY REWARDS"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_font_size_override("font_size", 23)
+	heading.add_theme_color_override("font_color", INK)
+	content.add_child(heading)
+
+	var detail := Label.new()
+	detail.name = "DailyRewardsDetail"
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.add_theme_font_size_override("font_size", 12)
+	detail.add_theme_color_override("font_color", MUTED)
+	content.add_child(detail)
+	_daily_rewards_detail = detail
+
+	for reward in [
+		{"days": 3, "title": "FIRST SPARK"},
+		{"days": 7, "title": "NOVA KEEPER"},
+		{"days": 30, "title": "CONSTELLATION"}
+	]:
+		var milestone := int(reward["days"])
+		var row := Label.new()
+		row.name = "DailyReward%dLabel" % milestone
+		row.add_theme_font_size_override("font_size", 14)
+		row.add_theme_color_override("font_color", MUTED)
+		content.add_child(row)
+		_daily_reward_labels[milestone] = row
+
+	var close := _make_button("CLOSE", VIOLET, Color("#5840B4"), Color.WHITE)
+	close.name = "DailyRewardsCloseButton"
+	close.custom_minimum_size = Vector2(0, 48)
+	close.add_theme_font_size_override("font_size", 14)
+	close.pressed.connect(_close_daily_rewards)
+	content.add_child(close)
+	_refresh_daily_rewards()
+
+func _open_daily_rewards() -> void:
+	_refresh_daily_rewards()
+	if is_instance_valid(_daily_rewards_overlay):
+		_daily_rewards_overlay.visible = true
+
+func _close_daily_rewards() -> void:
+	if is_instance_valid(_daily_rewards_overlay):
+		_daily_rewards_overlay.visible = false
+
+func _refresh_daily_rewards() -> void:
+	var unlocked := int(daily_best_streak >= 3) + int(daily_best_streak >= 7) + int(daily_best_streak >= 30)
+	if is_instance_valid(_daily_rewards_button):
+		_daily_rewards_button.text = "✦  REWARDS %d/3" % unlocked
+	if is_instance_valid(_daily_rewards_detail):
+		_daily_rewards_detail.text = "CURRENT %d DAYS   •   PERSONAL BEST %d DAYS" % [daily_streak, daily_best_streak]
+	var reward_titles := {3: "FIRST SPARK", 7: "NOVA KEEPER", 30: "CONSTELLATION"}
+	for milestone in [3, 7, 30]:
+		var row := _daily_reward_labels.get(milestone) as Label
+		if not is_instance_valid(row):
+			continue
+		if daily_best_streak >= milestone:
+			row.text = "✓  %d DAYS  •  %s  •  UNLOCKED" % [milestone, reward_titles[milestone]]
+			row.add_theme_color_override("font_color", Color("#35D6A5"))
+		else:
+			row.text = "○  %d DAYS  •  %s  •  %d/%d" % [milestone, reward_titles[milestone], mini(daily_best_streak, milestone), milestone]
+			row.add_theme_color_override("font_color", MUTED)
 
 func _layout_action_buttons() -> void:
 	if not is_instance_valid(_play_button) or not is_instance_valid(_best_panel):
@@ -216,13 +330,15 @@ func set_daily_progress(current_streak: int, best_streak: int) -> void:
 	daily_streak = maxi(current_streak, 0)
 	daily_best_streak = maxi(maxi(best_streak, 0), daily_streak)
 	if is_instance_valid(_daily_streak_label):
-		var unlocked := int(daily_best_streak >= 3) + int(daily_best_streak >= 7) + int(daily_best_streak >= 30)
-		_daily_streak_label.text = "✦  STREAK %dD  •  BEST %dD  •  REWARDS %d/3" % [daily_streak, daily_best_streak, unlocked]
+		_daily_streak_label.text = "✦  STREAK %dD  •  BEST %dD" % [daily_streak, daily_best_streak]
+	_refresh_daily_rewards()
 
 func set_daily_streak(value: int) -> void:
 	# Keep the original setter available for existing callers and older tests.
 	set_daily_progress(value, daily_best_streak)
 
 func set_ui_visible(value: bool) -> void:
+	if not value:
+		_close_daily_rewards()
 	if is_instance_valid(_root_control):
 		_root_control.visible = value
