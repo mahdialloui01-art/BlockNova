@@ -67,7 +67,9 @@ func _run_tests() -> void:
         return
     if not _check(int(game.call("_daily_reward_count", 2)) == 0 and int(game.call("_daily_reward_count", 3)) == 1 and int(game.call("_daily_reward_count", 7)) == 2 and int(game.call("_daily_reward_count", 30)) == 3, "Daily rewards must unlock at 3, 7, and 30 best-streak days"):
         return
-    if not _check(daily_home_ui.has_method("set_daily_progress") and daily_home_ui.get_node_or_null("FullScreenHome/DailyStreakLabel") != null, "Home screen must expose daily streak and reward progress"):
+    var rewards_button := daily_home_ui.get_node_or_null("FullScreenHome/DailyRewardsButton") as Button
+    var rewards_overlay := daily_home_ui.get_node_or_null("FullScreenHome/DailyRewardsOverlay") as Control
+    if not _check(daily_home_ui.has_method("set_daily_progress") and daily_home_ui.get_node_or_null("FullScreenHome/DailyStreakLabel") != null and rewards_button != null and rewards_overlay != null, "Home screen must expose streak progress and an interactive rewards panel"):
         return
     game.set("daily_mode", true)
     game.set("daily_streak", 2)
@@ -83,10 +85,22 @@ func _run_tests() -> void:
     if not _check(streak_config.load("user://blocknova.cfg") == OK and int(streak_config.get_value("daily_progress", "streak", 0)) == 3 and int(streak_config.get_value("daily_progress", "best_streak", 0)) == 3 and str(streak_config.get_value("daily_progress", "last_completed_date", "")) == "2026-11-20", "Current and best daily streaks must survive a config reload"):
         return
     var streak_label := daily_home_ui.get_node("FullScreenHome/DailyStreakLabel") as Label
-    if not _check(streak_label != null and streak_label.text.contains("REWARDS 1/3"), "Home screen must show the first unlocked reward"):
+    if not _check(streak_label != null and streak_label.text.contains("STREAK 3D") and rewards_button.text.contains("REWARDS 1/3"), "Home screen must show the current streak and first unlocked reward"):
+        return
+    rewards_button.emit_signal("pressed")
+    if not _check(rewards_overlay.visible, "Tapping the rewards control must open the daily rewards panel"):
+        return
+    var reward_3 := rewards_overlay.get_node("DailyRewardsPanel/Content/DailyReward3Label") as Label
+    var reward_7 := rewards_overlay.get_node("DailyRewardsPanel/Content/DailyReward7Label") as Label
+    var reward_30 := rewards_overlay.get_node("DailyRewardsPanel/Content/DailyReward30Label") as Label
+    if not _check(reward_3.text.contains("UNLOCKED") and not reward_7.text.contains("UNLOCKED") and not reward_30.text.contains("UNLOCKED"), "The rewards panel must distinguish earned and locked milestones"):
         return
     daily_home_ui.call("set_daily_progress", 30, 30)
-    if not _check(streak_label.text.contains("BEST 30D") and streak_label.text.contains("REWARDS 3/3"), "Home screen must show all rewards unlocked at a 30-day best streak"):
+    if not _check(streak_label.text.contains("BEST 30D") and rewards_button.text.contains("REWARDS 3/3") and reward_3.text.contains("UNLOCKED") and reward_7.text.contains("UNLOCKED") and reward_30.text.contains("UNLOCKED"), "A 30-day best streak must unlock all three visible rewards"):
+        return
+    var close_rewards := rewards_overlay.get_node("DailyRewardsPanel/Content/DailyRewardsCloseButton") as Button
+    close_rewards.emit_signal("pressed")
+    if not _check(not rewards_overlay.visible, "Closing the rewards panel must return to the home screen"):
         return
     # A missed day resets the active streak but must never erase earned rewards.
     var expired_progress := ConfigFile.new()
