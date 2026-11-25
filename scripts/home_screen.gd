@@ -18,6 +18,14 @@ var _daily_rewards_button: Button
 var _daily_rewards_overlay: Control
 var _daily_rewards_detail: Label
 var _daily_reward_labels: Dictionary = {}
+var _player_stats_button: Button
+var _player_stats_overlay: Control
+var _player_stats_labels: Dictionary = {}
+var lifetime_games_finished: int = 0
+var lifetime_pieces_placed: int = 0
+var lifetime_lines_cleared: int = 0
+var lifetime_total_score: int = 0
+var lifetime_best_combo: int = 0
 var daily_streak: int = 0
 var daily_best_streak: int = 0
 
@@ -77,15 +85,26 @@ func _build() -> void:
 	root.add_child(subtitle)
 
 	var feature := Label.new()
-	feature.text = "3D BLOCKS     •     SMART COMBOS     •     ENDLESS PLAY"
+	feature.text = "3D BLOCKS     •     SMART COMBOS"
 	feature.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	feature.add_theme_font_size_override("font_size", 10)
 	feature.add_theme_color_override("font_color", Color("#9AA9CE"))
 	feature.anchor_left = 0.04
-	feature.anchor_right = 0.96
+	feature.anchor_right = 0.64
 	feature.anchor_top = 0.625
 	feature.anchor_bottom = 0.655
 	root.add_child(feature)
+
+	var stats := _make_button("▦  PLAYER STATS", Color("#1B2945"), Color("#3D5C82"), INK)
+	stats.name = "PlayerStatsButton"
+	stats.anchor_left = 0.67
+	stats.anchor_right = 0.95
+	stats.anchor_top = 0.625
+	stats.anchor_bottom = 0.655
+	stats.add_theme_font_size_override("font_size", 10)
+	stats.pressed.connect(_open_player_stats)
+	root.add_child(stats)
+	_player_stats_button = stats
 
 	var streak := Label.new()
 	streak.name = "DailyStreakLabel"
@@ -163,6 +182,7 @@ func _build() -> void:
 	_best_panel = best_panel
 	_layout_action_buttons()
 	_build_daily_rewards_overlay(root)
+	_build_player_stats_overlay(root)
 
 func _build_daily_rewards_overlay(root: Control) -> void:
 	var overlay := Control.new()
@@ -236,6 +256,7 @@ func _build_daily_rewards_overlay(root: Control) -> void:
 	_refresh_daily_rewards()
 
 func _open_daily_rewards() -> void:
+	_close_player_stats()
 	_refresh_daily_rewards()
 	if is_instance_valid(_daily_rewards_overlay):
 		_daily_rewards_overlay.visible = true
@@ -261,6 +282,111 @@ func _refresh_daily_rewards() -> void:
 		else:
 			row.text = "○  %d DAYS  •  %s  •  %d/%d" % [milestone, reward_titles[milestone], mini(daily_best_streak, milestone), milestone]
 			row.add_theme_color_override("font_color", MUTED)
+
+func _build_player_stats_overlay(root: Control) -> void:
+	var overlay := Control.new()
+	overlay.name = "PlayerStatsOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.visible = false
+	root.add_child(overlay)
+	_player_stats_overlay = overlay
+
+	var backdrop := ColorRect.new()
+	backdrop.name = "Backdrop"
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.color = Color(0.015, 0.025, 0.055, 0.84)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(backdrop)
+
+	var panel := PanelContainer.new()
+	panel.name = "PlayerStatsPanel"
+	panel.anchor_left = 0.08
+	panel.anchor_right = 0.92
+	panel.anchor_top = 0.245
+	panel.anchor_bottom = 0.755
+	var panel_style := _panel_style(PANEL, Color("#52658F"), 24, 2)
+	panel_style.content_margin_left = 24
+	panel_style.content_margin_right = 24
+	panel_style.content_margin_top = 22
+	panel_style.content_margin_bottom = 22
+	panel.add_theme_stylebox_override("panel", panel_style)
+	overlay.add_child(panel)
+
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.add_theme_constant_override("separation", 12)
+	panel.add_child(content)
+
+	var heading := Label.new()
+	heading.text = "PLAYER RECORD"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_font_size_override("font_size", 23)
+	heading.add_theme_color_override("font_color", INK)
+	content.add_child(heading)
+
+	var detail := Label.new()
+	detail.text = "LIFETIME PERFORMANCE  •  THIS DEVICE"
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.add_theme_font_size_override("font_size", 11)
+	detail.add_theme_color_override("font_color", MUTED)
+	content.add_child(detail)
+
+	for stat in [
+		{"key": "games", "node": "PlayerStatGamesLabel", "title": "GAMES FINISHED"},
+		{"key": "pieces", "node": "PlayerStatPiecesLabel", "title": "BLOCKS PLACED"},
+		{"key": "lines", "node": "PlayerStatLinesLabel", "title": "LINES CLEARED"},
+		{"key": "score", "node": "PlayerStatScoreLabel", "title": "TOTAL SCORE"},
+		{"key": "combo", "node": "PlayerStatComboLabel", "title": "BEST COMBO"}
+	]:
+		var row := Label.new()
+		row.name = str(stat["node"])
+		row.custom_minimum_size = Vector2(0, 34)
+		row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_theme_font_size_override("font_size", 15)
+		row.add_theme_color_override("font_color", MUTED)
+		content.add_child(row)
+		_player_stats_labels[str(stat["key"])] = row
+
+	var close := _make_button("CLOSE", VIOLET, Color("#5840B4"), Color.WHITE)
+	close.name = "PlayerStatsCloseButton"
+	close.custom_minimum_size = Vector2(0, 48)
+	close.add_theme_font_size_override("font_size", 14)
+	close.pressed.connect(_close_player_stats)
+	content.add_child(close)
+	_refresh_player_stats()
+
+func _open_player_stats() -> void:
+	_close_daily_rewards()
+	_refresh_player_stats()
+	if is_instance_valid(_player_stats_overlay):
+		_player_stats_overlay.visible = true
+
+func _close_player_stats() -> void:
+	if is_instance_valid(_player_stats_overlay):
+		_player_stats_overlay.visible = false
+
+func _refresh_player_stats() -> void:
+	var values := {
+		"games": lifetime_games_finished,
+		"pieces": lifetime_pieces_placed,
+		"lines": lifetime_lines_cleared,
+		"score": lifetime_total_score,
+		"combo": lifetime_best_combo
+	}
+	var titles := {
+		"games": "GAMES FINISHED",
+		"pieces": "BLOCKS PLACED",
+		"lines": "LINES CLEARED",
+		"score": "TOTAL SCORE",
+		"combo": "BEST COMBO"
+	}
+	for key in values:
+		var row := _player_stats_labels.get(key) as Label
+		if not is_instance_valid(row):
+			continue
+		var value_text := "x%d" % int(values[key]) if key == "combo" else str(values[key])
+		row.text = "%s   •   %s" % [titles[key], value_text]
 
 func _layout_action_buttons() -> void:
 	if not is_instance_valid(_play_button) or not is_instance_valid(_best_panel):
@@ -326,6 +452,14 @@ func set_best_score(value: int) -> void:
 	if is_instance_valid(_best_label):
 		_best_label.text = "✦  PERSONAL BEST     %s" % best_score
 
+func set_lifetime_stats(games_finished: int, pieces_placed: int, lines_cleared: int, total_score: int, best_combo: int) -> void:
+	lifetime_games_finished = maxi(games_finished, 0)
+	lifetime_pieces_placed = maxi(pieces_placed, 0)
+	lifetime_lines_cleared = maxi(lines_cleared, 0)
+	lifetime_total_score = maxi(total_score, 0)
+	lifetime_best_combo = maxi(best_combo, 0)
+	_refresh_player_stats()
+
 func set_daily_progress(current_streak: int, best_streak: int) -> void:
 	daily_streak = maxi(current_streak, 0)
 	daily_best_streak = maxi(maxi(best_streak, 0), daily_streak)
@@ -340,5 +474,6 @@ func set_daily_streak(value: int) -> void:
 func set_ui_visible(value: bool) -> void:
 	if not value:
 		_close_daily_rewards()
+		_close_player_stats()
 	if is_instance_valid(_root_control):
 		_root_control.visible = value
