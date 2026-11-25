@@ -37,6 +37,8 @@ func _run_tests() -> void:
         return
     game.call("_load_settings")
     game.call("_update_music_state")
+    if not _check(int(game.get("lifetime_games_finished")) == 0 and int(game.get("lifetime_pieces_placed")) == 0 and int(game.get("lifetime_lines_cleared")) == 0 and int(game.get("lifetime_total_score")) == 0 and int(game.get("lifetime_best_combo")) == 0, "Existing saves without lifetime-stat keys must initialize all new counters to zero"):
+        return
     if not _check(not bool(game.get("sound_enabled")) and not bool(game.get("music_enabled")), "Legacy SOUND OFF must migrate to effects OFF and music OFF"):
         return
 
@@ -635,7 +637,7 @@ func _run_tests() -> void:
     if not _check(int(game.get("lifetime_games_finished")) == 1, "A finished run must be counted once even if the game-over hook is repeated"):
         return
     var lifetime_config := ConfigFile.new()
-    if not _check(lifetime_config.load("user://blocknova.cfg") == OK and int(lifetime_config.get_value("lifetime_stats", "games_finished", 0)) == 1 and int(lifetime_config.get_value("lifetime_stats", "pieces_placed", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "lines_cleared", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "best_combo", 0)) == 2, "Lifetime statistics must survive a ConfigFile reload"):
+    if not _check(lifetime_config.load("user://blocknova.cfg") == OK and int(lifetime_config.get_value("lifetime_stats", "games_finished", 0)) == 1 and int(lifetime_config.get_value("lifetime_stats", "pieces_placed", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "lines_cleared", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "total_score", 0)) == int(game.get("lifetime_total_score")) and int(lifetime_config.get_value("lifetime_stats", "best_combo", 0)) == 2, "Lifetime statistics must survive a ConfigFile reload"):
         return
 
     print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, independent voice/sound settings and persistence, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
