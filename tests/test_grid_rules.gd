@@ -436,10 +436,13 @@ func _run_tests() -> void:
     if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 9)), "Negative coordinates must be rejected"):
         return
 
+    var lifetime_score_before_clear := int(game.get("lifetime_total_score"))
     game.call("_try_place", Vector2i(9, 9))
     var actual_cleared_cells: Array = game.get("_last_cleared_cells")
     var actual_cleared_colors: Dictionary = game.get("_last_cleared_colors")
     if not _check(actual_cleared_cells.size() == 19 and actual_cleared_colors.size() == 19, "Simultaneous row and column clearing must capture each unique cell and its color"):
+        return
+    if not _check(int(game.get("lifetime_pieces_placed")) == 2 and int(game.get("lifetime_lines_cleared")) == 2 and int(game.get("lifetime_total_score")) > lifetime_score_before_clear and int(game.get("lifetime_best_combo")) == 2, "A simultaneous two-line clear must update lifetime pieces, lines, score, and best combo"):
         return
     if not _check(int(game.get("_active_visual_effects")) >= 19, "Every cleared tile must receive one short visual fade alongside combo celebration effects"):
         return
