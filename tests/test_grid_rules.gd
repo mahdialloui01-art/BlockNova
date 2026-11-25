@@ -21,6 +21,10 @@ func _run_tests() -> void:
     var daily_home_ui: CanvasLayer = game.get("home_ui") as CanvasLayer
     if not _check(daily_home_ui != null, "Active game must initialize the home UI before streak assertions"):
         return
+    var stats_button := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsButton") as Button
+    var stats_overlay := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsOverlay") as Control
+    if not _check(daily_home_ui.has_method("set_lifetime_stats") and stats_button != null and stats_overlay != null, "Home screen must expose a dedicated player statistics panel"):
+        return
 
     # Older installations stored one combined sound preference. When the new
     # music key is absent, both independent channels must inherit that value.
