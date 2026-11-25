@@ -456,7 +456,6 @@ func _load_settings() -> void:
 	if is_instance_valid(home_ui):
 		home_ui.set("best_score", best)
 		home_ui.call("set_daily_progress", daily_streak, daily_best_streak)
-	home_ui.call("set_lifetime_stats", lifetime_games_finished, lifetime_pieces_placed, lifetime_lines_cleared, lifetime_total_score, lifetime_best_combo)
 
 func _setup_home_ui() -> void:
 	var ui_script = load("res://scripts/home_screen.gd")
@@ -567,7 +566,6 @@ func _record_daily_completion() -> void:
 	config.save("user://blocknova.cfg")
 	if is_instance_valid(home_ui):
 		home_ui.call("set_daily_progress", daily_streak, daily_best_streak)
-	home_ui.call("set_lifetime_stats", lifetime_games_finished, lifetime_pieces_placed, lifetime_lines_cleared, lifetime_total_score, lifetime_best_combo)
 
 func _restart_current_mode() -> void:
 	if daily_mode:
