@@ -515,6 +515,7 @@ func _run_tests() -> void:
     if not _check(resume_button != null and resume_button.visible, "Saved game must reveal the home-screen resume button"):
         return
     var saved_score := int(game.get("score"))
+    var saved_run_placements := int(game.get("run_placements"))
     var saved_board: Array = game.get("board").duplicate(true)
     var saved_pieces: Array = game.get("pieces").duplicate(true)
     var saved_rng := game.get("game_rng") as RandomNumberGenerator
@@ -534,6 +535,8 @@ func _run_tests() -> void:
         return
     var restored_rng := game.get("game_rng") as RandomNumberGenerator
     if not _check(restored_rng.randi() == expected_next_random, "Resume must preserve the next deterministic piece RNG state"):
+        return
+    if not _check(int(game.get("run_placements")) == saved_run_placements, "Resume must preserve the active run placement count"):
         return
     var saved_config := game.get("config") as ConfigFile
     saved_config.set_value("session", "board", [[0]])
@@ -626,6 +629,13 @@ func _run_tests() -> void:
     game.set("game_over", false)
     game.call("_new_pieces")
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
+        return
+    game.call("_record_game_finished")
+    game.call("_record_game_finished")
+    if not _check(int(game.get("lifetime_games_finished")) == 1, "A finished run must be counted once even if the game-over hook is repeated"):
+        return
+    var lifetime_config := ConfigFile.new()
+    if not _check(lifetime_config.load("user://blocknova.cfg") == OK and int(lifetime_config.get_value("lifetime_stats", "games_finished", 0)) == 1 and int(lifetime_config.get_value("lifetime_stats", "pieces_placed", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "lines_cleared", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "best_combo", 0)) == 2, "Lifetime statistics must survive a ConfigFile reload"):
         return
 
     print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, independent voice/sound settings and persistence, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
