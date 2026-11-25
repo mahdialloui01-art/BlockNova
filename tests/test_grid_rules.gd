@@ -106,6 +106,26 @@ func _run_tests() -> void:
     close_rewards.emit_signal("pressed")
     if not _check(not rewards_overlay.visible, "Closing the rewards panel must return to the home screen"):
         return
+    daily_home_ui.call("set_lifetime_stats", 2, 18, 6, 2450, 5)
+    stats_button.emit_signal("pressed")
+    if not _check(stats_overlay.visible, "Tapping Player Stats must open its dedicated panel"):
+        return
+    var games_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatGamesLabel") as Label
+    var pieces_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatPiecesLabel") as Label
+    var lines_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatLinesLabel") as Label
+    var score_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatScoreLabel") as Label
+    var combo_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatComboLabel") as Label
+    if not _check(games_stat.text.contains("2") and pieces_stat.text.contains("18") and lines_stat.text.contains("6") and score_stat.text.contains("2450") and combo_stat.text.contains("x5"), "Player Stats must render all five lifetime metrics"):
+        return
+    var close_stats := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatsCloseButton") as Button
+    close_stats.emit_signal("pressed")
+    if not _check(not stats_overlay.visible, "Closing Player Stats must return to the home screen"):
+        return
+    stats_button.emit_signal("pressed")
+    daily_home_ui.call("set_ui_visible", false)
+    if not _check(not stats_overlay.visible and not rewards_overlay.visible, "Leaving the home screen must close all modal panels"):
+        return
+    daily_home_ui.call("set_ui_visible", true)
     # A missed day resets the active streak but must never erase earned rewards.
     var expired_progress := ConfigFile.new()
     expired_progress.set_value("daily_progress", "streak", 12)
