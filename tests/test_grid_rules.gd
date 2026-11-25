@@ -333,6 +333,16 @@ func _run_tests() -> void:
         if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 10 cells"):
             return
 
+    # Lifetime statistics begin at zero for this deterministic gameplay fixture.
+    game.set("lifetime_games_finished", 0)
+    game.set("lifetime_pieces_placed", 0)
+    game.set("lifetime_lines_cleared", 0)
+    game.set("lifetime_total_score", 0)
+    game.set("lifetime_best_combo", 0)
+    game.set("run_placements", 0)
+    game.set("_game_over_recorded", false)
+    game.call("_save_lifetime_stats")
+
     # Exercise the Android touch path: grab the right cell of a two-cell piece and drop it at board cell (5, 4).
     game.size = Vector2(1080, 2160)
     game.call("_layout")
@@ -388,6 +398,8 @@ func _run_tests() -> void:
     if not _check(int(touch_board[4][4]) == 0 and int(touch_board[4][5]) == 0, "Releasing the held right cell over board cell (5, 4) must place the piece at origin (4, 4)"):
         return
     if not _check(int(game.get("score")) == 10 and int(game.get("selected")) == -1 and not bool(game.get("dragging")) and int(game.get("_active_touch_index")) == -1, "A completed touch drop must score once and clear drag selection and pointer ownership"):
+        return
+    if not _check(int(game.get("lifetime_pieces_placed")) == 1 and int(game.get("lifetime_total_score")) == 10 and int(game.get("run_placements")) == 1, "A valid touch placement must update lifetime placement and score totals"):
         return
     game.call("_reset_game")
 
