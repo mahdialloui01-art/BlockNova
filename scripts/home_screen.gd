@@ -334,7 +334,7 @@ func _build_player_stats_overlay(root: Control) -> void:
 
 	for stat in [
 		{"key": "games", "node": "PlayerStatGamesLabel", "title": "GAMES FINISHED"},
-		{"key": "pieces", "node": "PlayerStatPiecesLabel", "title": "BLOCKS PLACED"},
+		{"key": "pieces", "node": "PlayerStatPiecesLabel", "title": "PIECES PLACED"},
 		{"key": "lines", "node": "PlayerStatLinesLabel", "title": "LINES CLEARED"},
 		{"key": "score", "node": "PlayerStatScoreLabel", "title": "TOTAL SCORE"},
 		{"key": "combo", "node": "PlayerStatComboLabel", "title": "BEST COMBO"}
@@ -376,7 +376,7 @@ func _refresh_player_stats() -> void:
 	}
 	var titles := {
 		"games": "GAMES FINISHED",
-		"pieces": "BLOCKS PLACED",
+		"pieces": "PIECES PLACED",
 		"lines": "LINES CLEARED",
 		"score": "TOTAL SCORE",
 		"combo": "BEST COMBO"
