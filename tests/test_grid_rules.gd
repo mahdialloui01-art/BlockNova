@@ -174,6 +174,11 @@ func _run_tests() -> void:
     if not _check(str(game.get("weekly_week_key")) == weekly_key_before and game.get("pieces") == weekly_pieces_before and game.get("piece_colors") == weekly_colors_before, "Replaying the same weekly challenge must reproduce its piece and color sequence"):
         return
     daily_home_ui.call("set_ui_visible", true)
+    # Headless audio drivers do not advance short UI cues like a physical device;
+    # stop the click cue so it cannot contaminate the later independent-audio test.
+    var weekly_click_sfx := (game.get("_sfx_players") as Dictionary).get("ui") as AudioStreamPlayer
+    if is_instance_valid(weekly_click_sfx):
+        weekly_click_sfx.stop()
 
     # Verify the raw WAV contract as well as Godot's ability to load each cue.
     var required_voice_assets := [
