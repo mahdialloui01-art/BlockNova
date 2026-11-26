@@ -23,7 +23,8 @@ func _run_tests() -> void:
         return
     var stats_button := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsButton") as Button
     var stats_overlay := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsOverlay") as Control
-    if not _check(daily_home_ui.has_method("set_lifetime_stats") and stats_button != null and stats_overlay != null, "Home screen must expose a dedicated player statistics panel"):
+    var weekly_button := daily_home_ui.get_node_or_null("FullScreenHome/WeeklyChallengeButton") as Button
+    if not _check(daily_home_ui.has_method("set_lifetime_stats") and stats_button != null and stats_overlay != null and weekly_button != null, "Home screen must expose player statistics and weekly challenge entry points"):
         return
 
     # Older installations stored one combined sound preference. When the new
@@ -70,6 +71,15 @@ func _run_tests() -> void:
     if not _check(int(game.call("_next_daily_streak", 2, "2026-01-31", "2026-02-01")) == 3 and int(game.call("_next_daily_streak", 2, "2025-12-31", "2026-01-01")) == 3, "Streaks must continue across month and year boundaries"):
         return
     if not _check(int(game.call("_next_daily_streak", 2, "2028-02-28", "2028-02-29")) == 3 and int(game.call("_next_daily_streak", 3, "2028-02-29", "2028-03-01")) == 4, "Streaks must handle leap-day transitions"):
+        return
+    var week_2026 := str(game.call("_weekly_key_for_date", "2026-11-23"))
+    if not _check(not week_2026.is_empty() and week_2026 == str(game.call("_weekly_key_for_date", "2026-11-29")), "Monday through Sunday must share one weekly challenge key"):
+        return
+    if not _check(week_2026 != str(game.call("_weekly_key_for_date", "2026-11-30")), "The next Monday must begin a new weekly challenge"):
+        return
+    if not _check(str(game.call("_weekly_key_for_date", "2025-12-29")) == str(game.call("_weekly_key_for_date", "2026-01-04")) and str(game.call("_weekly_key_for_date", "2026-01-05")) != str(game.call("_weekly_key_for_date", "2026-01-04")), "Weekly challenge keys must cross year boundaries correctly"):
+        return
+    if not _check(str(game.call("_weekly_key_for_date", "bad-date")).is_empty(), "Malformed dates must not produce a weekly challenge key"):
         return
     if not _check(int(game.call("_daily_reward_count", 2)) == 0 and int(game.call("_daily_reward_count", 3)) == 1 and int(game.call("_daily_reward_count", 7)) == 2 and int(game.call("_daily_reward_count", 30)) == 3, "Daily rewards must unlock at 3, 7, and 30 best-streak days"):
         return
@@ -142,6 +152,18 @@ func _run_tests() -> void:
     game.set("daily_date_key", "")
     game.set("daily_streak", 3)
     daily_home_ui.call("set_daily_progress", 3, 30)
+
+    weekly_button.emit_signal("pressed")
+    if not _check(bool(game.get("weekly_mode")) and not bool(game.get("daily_mode")) and not str(game.get("weekly_week_key")).is_empty() and int(game.get("screen")) == 2, "Weekly Challenge must start an independent seeded game mode"):
+        return
+    var weekly_key_before := str(game.get("weekly_week_key"))
+    var weekly_pieces_before: Array = game.get("pieces").duplicate(true)
+    var weekly_colors_before: Array = game.get("piece_colors").duplicate(true)
+    game.call("_seed_weekly_challenge")
+    game.call("_reset_game")
+    if not _check(str(game.get("weekly_week_key")) == weekly_key_before and game.get("pieces") == weekly_pieces_before and game.get("piece_colors") == weekly_colors_before, "Replaying the same weekly challenge must reproduce its piece and color sequence"):
+        return
+    daily_home_ui.call("set_ui_visible", true)
 
     # Verify the raw WAV contract as well as Godot's ability to load each cue.
     var required_voice_assets := [
@@ -344,6 +366,12 @@ func _run_tests() -> void:
     game.set("run_placements", 0)
     game.set("_game_over_recorded", false)
     game.call("_save_lifetime_stats")
+    game.set("weekly_mode", true)
+    game.set("weekly_week_key", str(game.call("_weekly_key_for_date", game.call("_current_date_key"))))
+    game.set("weekly_best", 0)
+    var weekly_config := game.get("config") as ConfigFile
+    weekly_config.set_value("weekly_records", str(game.get("weekly_week_key")), 0)
+    weekly_config.save("user://blocknova.cfg")
 
     # Exercise the Android touch path: grab the right cell of a two-cell piece and drop it at board cell (5, 4).
     game.size = Vector2(1080, 2160)
@@ -402,6 +430,8 @@ func _run_tests() -> void:
     if not _check(int(game.get("score")) == 10 and int(game.get("selected")) == -1 and not bool(game.get("dragging")) and int(game.get("_active_touch_index")) == -1, "A completed touch drop must score once and clear drag selection and pointer ownership"):
         return
     if not _check(int(game.get("lifetime_pieces_placed")) == 1 and int(game.get("lifetime_total_score")) == 10 and int(game.get("run_placements")) == 1, "A valid touch placement must update lifetime placement and score totals"):
+        return
+    if not _check(int(game.get("weekly_best")) == 10 and int(weekly_config.get_value("weekly_records", str(game.get("weekly_week_key")), 0)) == 10, "Weekly best score must persist after a valid placement"):
         return
     game.call("_reset_game")
 
@@ -518,6 +548,9 @@ func _run_tests() -> void:
         return
     var saved_score := int(game.get("score"))
     var saved_run_placements := int(game.get("run_placements"))
+    var saved_weekly_mode := bool(game.get("weekly_mode"))
+    var saved_weekly_key := str(game.get("weekly_week_key"))
+    var saved_weekly_best := int(game.get("weekly_best"))
     var saved_board: Array = game.get("board").duplicate(true)
     var saved_pieces: Array = game.get("pieces").duplicate(true)
     var saved_rng := game.get("game_rng") as RandomNumberGenerator
@@ -539,6 +572,8 @@ func _run_tests() -> void:
     if not _check(restored_rng.randi() == expected_next_random, "Resume must preserve the next deterministic piece RNG state"):
         return
     if not _check(int(game.get("run_placements")) == saved_run_placements, "Resume must preserve the active run placement count"):
+        return
+    if not _check(bool(game.get("weekly_mode")) == saved_weekly_mode and str(game.get("weekly_week_key")) == saved_weekly_key and int(game.get("weekly_best")) == saved_weekly_best, "Resume must preserve the current weekly challenge and its best score"):
         return
     var saved_config := game.get("config") as ConfigFile
     saved_config.set_value("session", "board", [[0]])
