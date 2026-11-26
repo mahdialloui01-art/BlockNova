@@ -405,16 +405,16 @@ func _layout_action_buttons() -> void:
 		return
 	var has_resume := is_instance_valid(_resume_button) and _resume_button.visible
 	if has_resume:
-		_resume_button.anchor_top = 0.665
-		_resume_button.anchor_bottom = 0.705
-		_play_button.anchor_top = 0.710
-		_play_button.anchor_bottom = 0.760
-		_daily_button.anchor_top = 0.765
-		_daily_button.anchor_bottom = 0.815
-		_weekly_button.anchor_top = 0.820
-		_weekly_button.anchor_bottom = 0.870
-		_settings_button.anchor_top = 0.875
-		_settings_button.anchor_bottom = 0.925
+		_resume_button.anchor_top = 0.700
+		_resume_button.anchor_bottom = 0.738
+		_play_button.anchor_top = 0.741
+		_play_button.anchor_bottom = 0.784
+		_daily_button.anchor_top = 0.787
+		_daily_button.anchor_bottom = 0.830
+		_weekly_button.anchor_top = 0.833
+		_weekly_button.anchor_bottom = 0.876
+		_settings_button.anchor_top = 0.879
+		_settings_button.anchor_bottom = 0.922
 		_best_panel.anchor_top = 0.935
 		_best_panel.anchor_bottom = 0.985
 	else:
