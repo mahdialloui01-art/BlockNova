@@ -139,6 +139,7 @@ func _build() -> void:
 	_resume_button = resume
 
 	var play := _make_button("▶   PLAY NOW", CYAN, Color("#138FAE"), Color("#071B30"))
+	play.name = "PlayButton"
 	play.anchor_left = 0.11
 	play.anchor_right = 0.89
 	play.anchor_top = 0.725
@@ -168,6 +169,7 @@ func _build() -> void:
 	_weekly_button = weekly
 
 	var settings := _make_button("⚙   SETTINGS", VIOLET, Color("#5840B4"), Color.WHITE)
+	settings.name = "SettingsButton"
 	settings.anchor_left = 0.11
 	settings.anchor_right = 0.89
 	settings.anchor_top = 0.91
