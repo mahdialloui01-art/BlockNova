@@ -53,6 +53,9 @@ var daily_best := 0
 var daily_streak := 0
 var daily_best_streak := 0
 var daily_last_completed_date := ""
+var weekly_mode := false
+var weekly_week_key := ""
+var weekly_best := 0
 # Lifetime statistics are local to this installation and begin with this update.
 var lifetime_games_finished := 0
 var lifetime_pieces_placed := 0
@@ -469,6 +472,7 @@ func _setup_home_ui() -> void:
 	home_ui.connect("play_requested", Callable(self, "_on_home_play"))
 	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
 	home_ui.connect("daily_challenge_requested", Callable(self, "_on_home_daily_challenge"))
+	home_ui.connect("weekly_challenge_requested", Callable(self, "_on_home_weekly_challenge"))
 	home_ui.connect("resume_requested", Callable(self, "_on_home_resume"))
 	home_ui.call("set_resume_available", _has_saved_session())
 
@@ -478,6 +482,9 @@ func _on_home_play() -> void:
 	daily_mode = false
 	daily_date_key = ""
 	daily_best = 0
+	weekly_mode = false
+	weekly_week_key = ""
+	weekly_best = 0
 	_restart_current_mode()
 	if is_instance_valid(home_ui):
 		home_ui.call("set_ui_visible", false)
@@ -486,6 +493,22 @@ func _on_home_daily_challenge() -> void:
 	_play_sfx("ui")
 	_clear_saved_session()
 	daily_mode = true
+	daily_date_key = ""
+	daily_best = 0
+	weekly_mode = false
+	weekly_week_key = ""
+	weekly_best = 0
+	_restart_current_mode()
+	if is_instance_valid(home_ui):
+		home_ui.call("set_ui_visible", false)
+
+func _on_home_weekly_challenge() -> void:
+	_play_sfx("ui")
+	_clear_saved_session()
+	daily_mode = false
+	daily_date_key = ""
+	daily_best = 0
+	weekly_mode = true
 	_restart_current_mode()
 	if is_instance_valid(home_ui):
 		home_ui.call("set_ui_visible", false)
@@ -495,6 +518,17 @@ func _seed_daily_challenge() -> void:
 	daily_date_key = "%04d-%02d-%02d" % [int(date["year"]), int(date["month"]), int(date["day"])]
 	game_rng.seed = int(date["year"]) * 10000 + int(date["month"]) * 100 + int(date["day"])
 	daily_best = int(config.get_value("daily_records", daily_date_key, 0))
+
+func _seed_weekly_challenge() -> void:
+	weekly_week_key = _weekly_key_for_date(_current_date_key())
+	if weekly_week_key.is_empty():
+		weekly_best = 0
+		game_rng.randomize()
+		return
+	var monday_ordinal := int(weekly_week_key)
+	# The Monday ordinal makes the same weekly seed independent of timezone offsets and DST.
+	game_rng.seed = monday_ordinal * 7919 + 17
+	weekly_best = maxi(0, int(config.get_value("weekly_records", weekly_week_key, 0)))
 
 func _date_ordinal(date_key: String) -> int:
 	# Convert an ISO local-calendar date to a Gregorian day number without
@@ -522,6 +556,13 @@ func _date_ordinal(date_key: String) -> int:
 	for month_index in range(month - 1):
 		ordinal += int(month_days[month_index])
 	return ordinal + day
+
+func _weekly_key_for_date(date_key: String) -> String:
+	var ordinal := _date_ordinal(date_key)
+	if ordinal < 0:
+		return ""
+	# Gregorian ordinal 1 is Monday; group dates into Monday-to-Sunday weeks.
+	return str(ordinal - posmod(ordinal - 1, 7))
 
 func _next_daily_streak(current_streak: int, last_date: String, completed_date: String) -> int:
 	var completed_ordinal := _date_ordinal(completed_date)
@@ -571,6 +612,8 @@ func _record_daily_completion() -> void:
 func _restart_current_mode() -> void:
 	if daily_mode:
 		_seed_daily_challenge()
+	elif weekly_mode:
+		_seed_weekly_challenge()
 	else:
 		game_rng.randomize()
 	_reset_game()
@@ -697,6 +740,9 @@ func _save_session() -> void:
 	config.set_value("session", "daily_mode", daily_mode)
 	config.set_value("session", "daily_date_key", daily_date_key)
 	config.set_value("session", "daily_best", daily_best)
+	config.set_value("session", "weekly_mode", weekly_mode)
+	config.set_value("session", "weekly_week_key", weekly_week_key)
+	config.set_value("session", "weekly_best", weekly_best)
 	config.set_value("session", "rng_state", game_rng.state)
 	config.set_value("session", "placement_note_index", placement_note_index)
 	config.save("user://blocknova.cfg")
@@ -722,7 +768,11 @@ func _restore_saved_session() -> bool:
 		restored_colors.append(Color.from_string("#" + color_text.trim_prefix("#"), Color.WHITE))
 	var restored_daily_mode := bool(config.get_value("session", "daily_mode", false))
 	var restored_date := str(config.get_value("session", "daily_date_key", ""))
-	if restored_daily_mode and restored_date != _current_date_key():
+	var restored_weekly_mode := bool(config.get_value("session", "weekly_mode", false))
+	var restored_week_key := str(config.get_value("session", "weekly_week_key", ""))
+	if restored_daily_mode and (restored_date != _current_date_key() or restored_weekly_mode):
+		return false
+	if restored_weekly_mode and (restored_week_key.is_empty() or restored_week_key != _weekly_key_for_date(_current_date_key())):
 		return false
 	var restored_rng_state: Variant = config.get_value("session", "rng_state", null)
 	if not (restored_rng_state is int):
@@ -740,6 +790,11 @@ func _restore_saved_session() -> bool:
 	daily_best = maxi(0, int(config.get_value("session", "daily_best", 0)))
 	if daily_mode:
 		daily_best = maxi(daily_best, int(config.get_value("daily_records", daily_date_key, 0)))
+	weekly_mode = restored_weekly_mode
+	weekly_week_key = restored_week_key if restored_weekly_mode else ""
+	weekly_best = maxi(0, int(config.get_value("session", "weekly_best", 0))) if restored_weekly_mode else 0
+	if weekly_mode:
+		weekly_best = maxi(weekly_best, int(config.get_value("weekly_records", weekly_week_key, 0)))
 	game_rng.state = int(restored_rng_state)
 	placement_note_index = posmod(int(config.get_value("session", "placement_note_index", 0)), 12)
 	selected = -1
@@ -885,12 +940,23 @@ func _draw_game() -> void:
 	var w := size.x
 	var h := size.y
 	_draw_text("BLOCK NOVA",Vector2(0,h*0.075),27,Color("#F3F6FF"),HORIZONTAL_ALIGNMENT_CENTER,w)
-	_draw_text("DAILY CHALLENGE  •  "+daily_date_key if daily_mode else "PUZZLE  •  THINK  •  COMBO",Vector2(0,h*0.105),10,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
+	var challenge_title := "PUZZLE  •  THINK  •  COMBO"
+	if daily_mode:
+		challenge_title = "DAILY CHALLENGE  •  " + daily_date_key
+	elif weekly_mode:
+		challenge_title = "WEEKLY CHALLENGE  •  SAME SEED ALL WEEK"
+	_draw_text(challenge_title,Vector2(0,h*0.105),10,Color("#8FA4C9"),HORIZONTAL_ALIGNMENT_CENTER,w)
 	_draw_panel(Rect2(22,h*0.132,w-44,86),Color("#211D36"),20)
 	_draw_text("SCORE",Vector2(42,h*0.162),14,Color("#B9C8E8"))
 	_draw_text(str(score),Vector2(42,h*0.218),37,Color("#FFF8E8"))
-	var visible_best: int = max(daily_best, score) if daily_mode else max(best, score)
-	var best_label := "DAY BEST  " if daily_mode else "BEST  "
+	var visible_best: int = max(best, score)
+	var best_label := "BEST  "
+	if daily_mode:
+		visible_best = max(daily_best, score)
+		best_label = "DAY BEST  "
+	elif weekly_mode:
+		visible_best = max(weekly_best, score)
+		best_label = "WEEK BEST  "
 	_draw_text(best_label+str(visible_best),Vector2(w-205,h*0.194),16,Color("#FFE08A"))
 	if combo_streak > 0:
 		_draw_panel(Rect2(w*0.405,h*0.151,w*0.245,57),Color("#173E49"),15)
@@ -1252,6 +1318,10 @@ func _try_place(at: Vector2i) -> void:
 	if daily_mode and not daily_date_key.is_empty() and score > daily_best:
 		daily_best = score
 		config.set_value("daily_records", daily_date_key, daily_best)
+		config.save("user://blocknova.cfg")
+	elif weekly_mode and not weekly_week_key.is_empty() and score > weekly_best:
+		weekly_best = score
+		config.set_value("weekly_records", weekly_week_key, weekly_best)
 		config.save("user://blocknova.cfg")
 	if _all_pieces_used():
 		_new_pieces()
