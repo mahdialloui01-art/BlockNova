@@ -53,6 +53,14 @@ var daily_best := 0
 var daily_streak := 0
 var daily_best_streak := 0
 var daily_last_completed_date := ""
+# Lifetime statistics are local to this installation and begin with this update.
+var lifetime_games_finished := 0
+var lifetime_pieces_placed := 0
+var lifetime_lines_cleared := 0
+var lifetime_total_score := 0
+var lifetime_best_combo := 0
+var run_placements := 0
+var _game_over_recorded := false
 var config: ConfigFile
 var game_rng := RandomNumberGenerator.new()
 var home_ui: CanvasLayer
@@ -439,10 +447,16 @@ func _load_settings() -> void:
 		daily_last_completed_date = ""
 	else:
 		daily_streak = _daily_streak_for_today(daily_streak, daily_last_completed_date, _current_date_key())
+	lifetime_games_finished = clampi(int(config.get_value("lifetime_stats", "games_finished", 0)), 0, 2000000000)
+	lifetime_pieces_placed = clampi(int(config.get_value("lifetime_stats", "pieces_placed", 0)), 0, 2000000000)
+	lifetime_lines_cleared = clampi(int(config.get_value("lifetime_stats", "lines_cleared", 0)), 0, 2000000000)
+	lifetime_total_score = clampi(int(config.get_value("lifetime_stats", "total_score", 0)), 0, 2000000000)
+	lifetime_best_combo = clampi(int(config.get_value("lifetime_stats", "best_combo", 0)), 0, 1000000)
 
 	if is_instance_valid(home_ui):
 		home_ui.set("best_score", best)
 		home_ui.call("set_daily_progress", daily_streak, daily_best_streak)
+		home_ui.call("set_lifetime_stats", lifetime_games_finished, lifetime_pieces_placed, lifetime_lines_cleared, lifetime_total_score, lifetime_best_combo)
 
 func _setup_home_ui() -> void:
 	var ui_script = load("res://scripts/home_screen.gd")
@@ -451,6 +465,7 @@ func _setup_home_ui() -> void:
 	add_child(home_ui)
 	home_ui.set("best_score", best)
 	home_ui.call("set_daily_progress", daily_streak, daily_best_streak)
+	home_ui.call("set_lifetime_stats", lifetime_games_finished, lifetime_pieces_placed, lifetime_lines_cleared, lifetime_total_score, lifetime_best_combo)
 	home_ui.connect("play_requested", Callable(self, "_on_home_play"))
 	home_ui.connect("settings_requested", Callable(self, "_on_home_settings"))
 	home_ui.connect("daily_challenge_requested", Callable(self, "_on_home_daily_challenge"))
@@ -575,6 +590,25 @@ func _save_settings() -> void:
 	config.set_value("settings", "vibration", vibration_enabled)
 	config.save("user://blocknova.cfg")
 
+func _save_lifetime_stats() -> void:
+	if config == null:
+		return
+	config.set_value("lifetime_stats", "games_finished", lifetime_games_finished)
+	config.set_value("lifetime_stats", "pieces_placed", lifetime_pieces_placed)
+	config.set_value("lifetime_stats", "lines_cleared", lifetime_lines_cleared)
+	config.set_value("lifetime_stats", "total_score", lifetime_total_score)
+	config.set_value("lifetime_stats", "best_combo", lifetime_best_combo)
+	config.save("user://blocknova.cfg")
+	if is_instance_valid(home_ui):
+		home_ui.call("set_lifetime_stats", lifetime_games_finished, lifetime_pieces_placed, lifetime_lines_cleared, lifetime_total_score, lifetime_best_combo)
+
+func _record_game_finished() -> void:
+	if not game_over or _game_over_recorded or run_placements <= 0:
+		return
+	_game_over_recorded = true
+	lifetime_games_finished += 1
+	_save_lifetime_stats()
+
 func _current_date_key() -> String:
 	var date := Time.get_date_dict_from_system()
 	return "%04d-%02d-%02d" % [int(date["year"]), int(date["month"]), int(date["day"])]
@@ -659,6 +693,7 @@ func _save_session() -> void:
 	config.set_value("session", "score", score)
 	config.set_value("session", "combo_streak", combo_streak)
 	config.set_value("session", "combo_missed_placements", combo_missed_placements)
+	config.set_value("session", "run_placements", run_placements)
 	config.set_value("session", "daily_mode", daily_mode)
 	config.set_value("session", "daily_date_key", daily_date_key)
 	config.set_value("session", "daily_best", daily_best)
@@ -698,6 +733,8 @@ func _restore_saved_session() -> bool:
 	score = maxi(0, int(config.get_value("session", "score", 0)))
 	combo_streak = maxi(0, int(config.get_value("session", "combo_streak", 0)))
 	combo_missed_placements = clampi(int(config.get_value("session", "combo_missed_placements", 0)), 0, 2)
+	run_placements = clampi(int(config.get_value("session", "run_placements", 0)), 0, 1000000)
+	_game_over_recorded = false
 	daily_mode = restored_daily_mode
 	daily_date_key = restored_date
 	daily_best = maxi(0, int(config.get_value("session", "daily_best", 0)))
@@ -749,6 +786,8 @@ func _reset_game() -> void:
 	score = 0
 	combo_streak = 0
 	combo_missed_placements = 0
+	run_placements = 0
+	_game_over_recorded = false
 	placement_note_index = 0
 	selected = -1
 	dragging = false
@@ -1169,6 +1208,7 @@ func _try_place(at: Vector2i) -> void:
 		if piece_colors[selected].is_equal_approx(COLORS[i]):
 			color_index = i
 			break
+	var score_before := score
 	for c in shape:
 		var target_y: int = at.y + c.y
 		var target_x: int = at.x + c.x
@@ -1198,6 +1238,12 @@ func _try_place(at: Vector2i) -> void:
 		_update_combo_streak(0)
 		combo_popup_time = 0.0
 		_trigger_haptic(22, 0.30)
+	run_placements += 1
+	lifetime_pieces_placed += 1
+	lifetime_lines_cleared += cleared
+	lifetime_total_score += maxi(score - score_before, 0)
+	lifetime_best_combo = maxi(lifetime_best_combo, combo_streak)
+	_save_lifetime_stats()
 	if score>best:
 		best=score
 		_save_settings()
@@ -1215,6 +1261,7 @@ func _try_place(at: Vector2i) -> void:
 		_play_voice_cue("game_over")
 		_trigger_haptic(72, 0.56)
 	if game_over:
+		_record_game_finished()
 		_record_daily_completion()
 		_clear_saved_session()
 	else:

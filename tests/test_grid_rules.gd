@@ -21,6 +21,10 @@ func _run_tests() -> void:
     var daily_home_ui: CanvasLayer = game.get("home_ui") as CanvasLayer
     if not _check(daily_home_ui != null, "Active game must initialize the home UI before streak assertions"):
         return
+    var stats_button := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsButton") as Button
+    var stats_overlay := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsOverlay") as Control
+    if not _check(daily_home_ui.has_method("set_lifetime_stats") and stats_button != null and stats_overlay != null, "Home screen must expose a dedicated player statistics panel"):
+        return
 
     # Older installations stored one combined sound preference. When the new
     # music key is absent, both independent channels must inherit that value.
@@ -33,6 +37,8 @@ func _run_tests() -> void:
         return
     game.call("_load_settings")
     game.call("_update_music_state")
+    if not _check(int(game.get("lifetime_games_finished")) == 0 and int(game.get("lifetime_pieces_placed")) == 0 and int(game.get("lifetime_lines_cleared")) == 0 and int(game.get("lifetime_total_score")) == 0 and int(game.get("lifetime_best_combo")) == 0, "Existing saves without lifetime-stat keys must initialize all new counters to zero"):
+        return
     if not _check(not bool(game.get("sound_enabled")) and not bool(game.get("music_enabled")), "Legacy SOUND OFF must migrate to effects OFF and music OFF"):
         return
 
@@ -102,6 +108,26 @@ func _run_tests() -> void:
     close_rewards.emit_signal("pressed")
     if not _check(not rewards_overlay.visible, "Closing the rewards panel must return to the home screen"):
         return
+    daily_home_ui.call("set_lifetime_stats", 2, 18, 6, 2450, 5)
+    stats_button.emit_signal("pressed")
+    if not _check(stats_overlay.visible, "Tapping Player Stats must open its dedicated panel"):
+        return
+    var games_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatGamesLabel") as Label
+    var pieces_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatPiecesLabel") as Label
+    var lines_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatLinesLabel") as Label
+    var score_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatScoreLabel") as Label
+    var combo_stat := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatComboLabel") as Label
+    if not _check(games_stat.text.contains("2") and pieces_stat.text.contains("18") and lines_stat.text.contains("6") and score_stat.text.contains("2450") and combo_stat.text.contains("x5"), "Player Stats must render all five lifetime metrics"):
+        return
+    var close_stats := stats_overlay.get_node("PlayerStatsPanel/Content/PlayerStatsCloseButton") as Button
+    close_stats.emit_signal("pressed")
+    if not _check(not stats_overlay.visible, "Closing Player Stats must return to the home screen"):
+        return
+    stats_button.emit_signal("pressed")
+    daily_home_ui.call("set_ui_visible", false)
+    if not _check(not stats_overlay.visible and not rewards_overlay.visible, "Leaving the home screen must close all modal panels"):
+        return
+    daily_home_ui.call("set_ui_visible", true)
     # A missed day resets the active streak but must never erase earned rewards.
     var expired_progress := ConfigFile.new()
     expired_progress.set_value("daily_progress", "streak", 12)
@@ -309,6 +335,16 @@ func _run_tests() -> void:
         if not _check(row is Array and row.size() == 10, "Every board row must contain exactly 10 cells"):
             return
 
+    # Lifetime statistics begin at zero for this deterministic gameplay fixture.
+    game.set("lifetime_games_finished", 0)
+    game.set("lifetime_pieces_placed", 0)
+    game.set("lifetime_lines_cleared", 0)
+    game.set("lifetime_total_score", 0)
+    game.set("lifetime_best_combo", 0)
+    game.set("run_placements", 0)
+    game.set("_game_over_recorded", false)
+    game.call("_save_lifetime_stats")
+
     # Exercise the Android touch path: grab the right cell of a two-cell piece and drop it at board cell (5, 4).
     game.size = Vector2(1080, 2160)
     game.call("_layout")
@@ -365,6 +401,8 @@ func _run_tests() -> void:
         return
     if not _check(int(game.get("score")) == 10 and int(game.get("selected")) == -1 and not bool(game.get("dragging")) and int(game.get("_active_touch_index")) == -1, "A completed touch drop must score once and clear drag selection and pointer ownership"):
         return
+    if not _check(int(game.get("lifetime_pieces_placed")) == 1 and int(game.get("lifetime_total_score")) == 10 and int(game.get("run_placements")) == 1, "A valid touch placement must update lifetime placement and score totals"):
+        return
     game.call("_reset_game")
 
     # Returning home during an active gesture must still release the owning finger.
@@ -400,10 +438,13 @@ func _run_tests() -> void:
     if not _check(not game.call("_can_place", [Vector2i(0, 0)], Vector2i(-1, 9)), "Negative coordinates must be rejected"):
         return
 
+    var lifetime_score_before_clear := int(game.get("lifetime_total_score"))
     game.call("_try_place", Vector2i(9, 9))
     var actual_cleared_cells: Array = game.get("_last_cleared_cells")
     var actual_cleared_colors: Dictionary = game.get("_last_cleared_colors")
     if not _check(actual_cleared_cells.size() == 19 and actual_cleared_colors.size() == 19, "Simultaneous row and column clearing must capture each unique cell and its color"):
+        return
+    if not _check(int(game.get("lifetime_pieces_placed")) == 2 and int(game.get("lifetime_lines_cleared")) == 2 and int(game.get("lifetime_total_score")) > lifetime_score_before_clear and int(game.get("lifetime_best_combo")) == 2, "A simultaneous two-line clear must update lifetime pieces, lines, score, and best combo"):
         return
     if not _check(int(game.get("_active_visual_effects")) >= 19, "Every cleared tile must receive one short visual fade alongside combo celebration effects"):
         return
@@ -476,6 +517,7 @@ func _run_tests() -> void:
     if not _check(resume_button != null and resume_button.visible, "Saved game must reveal the home-screen resume button"):
         return
     var saved_score := int(game.get("score"))
+    var saved_run_placements := int(game.get("run_placements"))
     var saved_board: Array = game.get("board").duplicate(true)
     var saved_pieces: Array = game.get("pieces").duplicate(true)
     var saved_rng := game.get("game_rng") as RandomNumberGenerator
@@ -495,6 +537,8 @@ func _run_tests() -> void:
         return
     var restored_rng := game.get("game_rng") as RandomNumberGenerator
     if not _check(restored_rng.randi() == expected_next_random, "Resume must preserve the next deterministic piece RNG state"):
+        return
+    if not _check(int(game.get("run_placements")) == saved_run_placements, "Resume must preserve the active run placement count"):
         return
     var saved_config := game.get("config") as ConfigFile
     saved_config.set_value("session", "board", [[0]])
@@ -587,6 +631,13 @@ func _run_tests() -> void:
     game.set("game_over", false)
     game.call("_new_pieces")
     if not _check(bool(game.get("game_over")), "A completely full board must still trigger game over after tray retries"):
+        return
+    game.call("_record_game_finished")
+    game.call("_record_game_finished")
+    if not _check(int(game.get("lifetime_games_finished")) == 1, "A finished run must be counted once even if the game-over hook is repeated"):
+        return
+    var lifetime_config := ConfigFile.new()
+    if not _check(lifetime_config.load("user://blocknova.cfg") == OK and int(lifetime_config.get_value("lifetime_stats", "games_finished", 0)) == 1 and int(lifetime_config.get_value("lifetime_stats", "pieces_placed", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "lines_cleared", 0)) == 2 and int(lifetime_config.get_value("lifetime_stats", "total_score", 0)) == int(game.get("lifetime_total_score")) and int(lifetime_config.get_value("lifetime_stats", "best_combo", 0)) == 2, "Lifetime statistics must survive a ConfigFile reload"):
         return
 
     print("PASS: 10x10 daily challenge, active 2.5D scene/3D mesh, independent voice/sound settings and persistence, Android haptics, placement bounds, occupied-cell rejection, fair tray retries, one-cell fallback, simultaneous line clear, 19-cell fade cleanup, placement pop, quadratic combo score 755, touch drag offset and drop, no-move detection, disk save/reload/resume, corrupt-save rejection, deterministic RNG continuation")
