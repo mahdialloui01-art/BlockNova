@@ -17,6 +17,7 @@ An original, mobile-first block puzzle game built with Godot 4.4.1. BlockNova ha
 - Optional pre-rendered Arabic Darija combo-announcer cues for combo milestones and game over (Piper ar_JO Kareem voice; phrases written in Algerian Darija), with a third independent voice toggle
 - Optional haptic feedback for pickup, invalid moves, placement, and line clears, with a user-controlled setting
 - Deterministic daily challenge: the same local-date seed and piece/color sequence for every replay, with a date-specific best score, a persisted completion streak, and permanent 3/7/30-day reward milestones shown in an interactive home-screen rewards panel
+- Deterministic weekly challenge: one shared Monday-to-Sunday seed and piece/color sequence for the full local-calendar week, with a separate best score saved per week
 - Persistent current and best daily streaks, unlocked milestone rewards, local lifetime statistics (finished games, placed pieces, cleared lines, cumulative score, and best combo), best score, separate sound-effect, music, voice-announcer, and haptic preferences, and an in-progress game session in Godot's `user://` storage
 - A conditional **Resume Last Game** home-screen action that restores the 10×10 board, tray pieces, score, combo, daily-mode date/record, and the dedicated random-number-generator state
 - Automatic migration of older 8×8 sessions into the center of the 10×10 board
@@ -31,7 +32,7 @@ The active scene is `res://scenes/main.tscn`, which uses `scripts/main_2_5d.gd` 
 
 ## Automated validation
 
-GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes deterministic regression checks against the actual 2.5D Android scene. The tests verify its 3D viewport and rounded block mesh, deterministic daily challenge seed, date-specific record, daily-streak month/year/leap-day boundaries, current/best streak persistence, 3/7/30-day reward unlocks and the home-screen rewards panel open/close and milestone states, player-statistics panel metrics and visibility lifecycle, lifetime counter updates from valid placements and line clears, idempotent game-finish accounting and ConfigFile persistence, Android VIBRATE permission and safe haptic preference guard, plus 10×10 bounds, occupied cells, simultaneous row/column clearing, unique cleared-cell color capture, placement/clear animation cleanup, combo scoring, no-move detection, native 10×10 save round trips, centered migration of legacy 8×8 saves, malformed-save rejection, generated voice-file format and routing, independent sound-effect/music/voice playback gates and persisted preferences, and deterministic RNG continuation after resume. The Android build also inspects the exported manifest for VIBRATE and verifies the APK signature before uploading it.
+GitHub Actions imports the original 3D model, parses the project, runs a main-scene startup smoke test, and executes deterministic regression checks against the actual 2.5D Android scene. The tests verify its 3D viewport and rounded block mesh, deterministic daily challenge seed, date-specific record, daily-streak month/year/leap-day boundaries, current/best streak persistence, 3/7/30-day reward unlocks and the home-screen rewards panel open/close and milestone states, weekly Monday-to-Sunday key boundaries, year transitions, deterministic weekly piece/color sequences, separate weekly best-score persistence and resume validation, player-statistics panel metrics and visibility lifecycle, lifetime counter updates from valid placements and line clears, idempotent game-finish accounting and ConfigFile persistence, Android VIBRATE permission and safe haptic preference guard, plus 10×10 bounds, occupied cells, simultaneous row/column clearing, unique cleared-cell color capture, placement/clear animation cleanup, combo scoring, no-move detection, native 10×10 save round trips, centered migration of legacy 8×8 saves, malformed-save rejection, generated voice-file format and routing, independent sound-effect/music/voice playback gates and persisted preferences, and deterministic RNG continuation after resume. The Android build also inspects the exported manifest for VIBRATE and verifies the APK signature before uploading it.
 
 ## Android build status
 
@@ -41,7 +42,7 @@ The Android workflow exports and signs a debug APK on pushes to `main`. The debu
 
 1. Install the latest Actions APK on a physical phone and verify touch placement, drag preview, 10×10 scaling, 3D rendering, and performance.
 2. Confirm haptic strength and timing on a physical phone, verify the placement-pop and line-clear fade animations and tune their timing.
-3. Expand daily challenges with additional original game modes and optional cloud-independent challenge history.
+3. Add an optional cloud-independent history of completed daily and weekly challenges.
 4. Profile rendering, audio generation cost, and memory use on lower-end Android devices.
 5. Configure production signing and store metadata before release.
 
