@@ -24,8 +24,18 @@ func _run_tests() -> void:
     var stats_button := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsButton") as Button
     var stats_overlay := daily_home_ui.get_node_or_null("FullScreenHome/PlayerStatsOverlay") as Control
     var weekly_button := daily_home_ui.get_node_or_null("FullScreenHome/WeeklyChallengeButton") as Button
+    var resume_layout_button := daily_home_ui.get_node_or_null("FullScreenHome/ResumeButton") as Button
+    var play_layout_button := daily_home_ui.get_node_or_null("FullScreenHome/PlayButton") as Button
+    var daily_layout_button := daily_home_ui.get_node_or_null("FullScreenHome/DailyChallengeButton") as Button
+    var settings_layout_button := daily_home_ui.get_node_or_null("FullScreenHome/SettingsButton") as Button
     if not _check(daily_home_ui.has_method("set_lifetime_stats") and stats_button != null and stats_overlay != null and weekly_button != null, "Home screen must expose player statistics and weekly challenge entry points"):
         return
+    if not _check(resume_layout_button != null and play_layout_button != null and daily_layout_button != null and settings_layout_button != null, "All home-screen action buttons must be available for responsive layout"):
+        return
+    daily_home_ui.call("set_resume_available", true)
+    if not _check(resume_layout_button.anchor_top >= 0.695 and resume_layout_button.anchor_bottom <= play_layout_button.anchor_top and play_layout_button.anchor_bottom <= daily_layout_button.anchor_top and daily_layout_button.anchor_bottom <= weekly_button.anchor_top and weekly_button.anchor_bottom <= settings_layout_button.anchor_top and settings_layout_button.anchor_bottom < 0.93, "Resume, play, daily, weekly, and settings buttons must not overlap the streak controls or each other"):
+        return
+    daily_home_ui.call("set_resume_available", false)
 
     # Older installations stored one combined sound preference. When the new
     # music key is absent, both independent channels must inherit that value.
@@ -576,6 +586,11 @@ func _run_tests() -> void:
     if not _check(bool(game.get("weekly_mode")) == saved_weekly_mode and str(game.get("weekly_week_key")) == saved_weekly_key and int(game.get("weekly_best")) == saved_weekly_best, "Resume must preserve the current weekly challenge and its best score"):
         return
     var saved_config := game.get("config") as ConfigFile
+    saved_config.set_value("session", "weekly_week_key", str(game.call("_weekly_key_for_date", "2000-01-03")))
+    saved_config.save("user://blocknova.cfg")
+    if not _check(not bool(game.call("_restore_saved_session")), "A weekly challenge session must not resume after its week has expired"):
+        return
+    saved_config.set_value("session", "weekly_week_key", saved_weekly_key)
     saved_config.set_value("session", "board", [[0]])
     saved_config.save("user://blocknova.cfg")
     if not _check(not bool(game.call("_restore_saved_session")), "Malformed saved sessions must be rejected safely"):
