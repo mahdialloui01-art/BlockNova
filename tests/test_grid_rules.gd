@@ -381,8 +381,11 @@ func _run_tests() -> void:
     game.set("run_placements", 0)
     game.set("_game_over_recorded", false)
     game.call("_save_lifetime_stats")
-    game.set("weekly_mode", true)
-    game.set("weekly_week_key", str(game.call("_weekly_key_for_date", game.call("_current_date_key"))))
+    # Enter weekly mode through the real home-screen action. This also verifies
+    # that switching from the daily challenge clears daily mode before scoring.
+    weekly_button.emit_signal("pressed")
+    if not _check(bool(game.get("weekly_mode")) and not bool(game.get("daily_mode")) and not str(game.get("weekly_week_key")).is_empty(), "Weekly challenge action must switch cleanly out of daily mode and initialize the current week"):
+        return
     game.set("weekly_best", 0)
     var weekly_config := game.get("config") as ConfigFile
     weekly_config.set_value("weekly_records", str(game.get("weekly_week_key")), 0)
