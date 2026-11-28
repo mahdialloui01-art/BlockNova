@@ -451,6 +451,18 @@ func _run_tests() -> void:
         return
     if not _check(int(game.get("weekly_best")) == 10 and int(weekly_config.get_value("weekly_records", str(game.get("weekly_week_key")), 0)) == 10, "Weekly best score must persist after a valid placement"):
         return
+
+    # The remaining line-clear scoring fixture intentionally verifies the daily
+    # record path. Switch back through the real home action so weekly_mode cannot
+    # route those later scores into weekly_records instead.
+    daily_layout_button.emit_signal("pressed")
+    if not _check(bool(game.get("daily_mode")) and not bool(game.get("weekly_mode")) and str(game.get("daily_date_key")).split("-").size() == 3, "Switching back to Daily Challenge must clear weekly mode and initialize today's record key"):
+        return
+    var daily_config := game.get("config") as ConfigFile
+    daily_config.set_value("daily_records", str(game.get("daily_date_key")), 0)
+    if not _check(daily_config.save("user://blocknova.cfg") == OK, "Daily best-score fixture must be reset before the daily scoring test"):
+        return
+    game.set("daily_best", 0)
     game.call("_reset_game")
 
     # Returning home during an active gesture must still release the owning finger.
