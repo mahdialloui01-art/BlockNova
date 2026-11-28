@@ -452,6 +452,19 @@ func _run_tests() -> void:
     if not _check(int(game.get("weekly_best")) == 10 and int(weekly_config.get_value("weekly_records", str(game.get("weekly_week_key")), 0)) == 10, "Weekly best score must persist after a valid placement"):
         return
 
+    # Validate weekly-session expiry while the saved session is genuinely weekly.
+    game.call("_save_session")
+    var weekly_session_config := game.get("config") as ConfigFile
+    var current_week_key := str(game.get("weekly_week_key"))
+    weekly_session_config.set_value("session", "weekly_week_key", str(game.call("_weekly_key_for_date", "2000-01-03")))
+    if not _check(weekly_session_config.save("user://blocknova.cfg") == OK, "Expired weekly-session fixture must be writable"):
+        return
+    if not _check(not bool(game.call("_restore_saved_session")), "A weekly challenge session must not resume after its week has expired"):
+        return
+    weekly_session_config.set_value("session", "weekly_week_key", current_week_key)
+    if not _check(weekly_session_config.save("user://blocknova.cfg") == OK and bool(game.call("_restore_saved_session")) and bool(game.get("weekly_mode")), "A valid current-week challenge session must resume"):
+        return
+
     # The remaining line-clear scoring fixture intentionally verifies the daily
     # record path. Switch back through the real home action so weekly_mode cannot
     # route those later scores into weekly_records instead.
@@ -606,11 +619,6 @@ func _run_tests() -> void:
     if not _check(bool(game.get("weekly_mode")) == saved_weekly_mode and str(game.get("weekly_week_key")) == saved_weekly_key and int(game.get("weekly_best")) == saved_weekly_best, "Resume must preserve the current weekly challenge and its best score"):
         return
     var saved_config := game.get("config") as ConfigFile
-    saved_config.set_value("session", "weekly_week_key", str(game.call("_weekly_key_for_date", "2000-01-03")))
-    saved_config.save("user://blocknova.cfg")
-    if not _check(not bool(game.call("_restore_saved_session")), "A weekly challenge session must not resume after its week has expired"):
-        return
-    saved_config.set_value("session", "weekly_week_key", saved_weekly_key)
     saved_config.set_value("session", "board", [[0]])
     saved_config.save("user://blocknova.cfg")
     if not _check(not bool(game.call("_restore_saved_session")), "Malformed saved sessions must be rejected safely"):
