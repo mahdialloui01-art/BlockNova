@@ -3,6 +3,7 @@ extends CanvasLayer
 signal play_requested
 signal settings_requested
 signal daily_challenge_requested
+signal weekly_challenge_requested
 signal resume_requested
 
 var best_score: int = 0
@@ -11,6 +12,7 @@ var _root_control: Control
 var _resume_button: Button
 var _play_button: Button
 var _daily_button: Button
+var _weekly_button: Button
 var _settings_button: Button
 var _best_panel: PanelContainer
 var _daily_streak_label: Label
@@ -137,6 +139,7 @@ func _build() -> void:
 	_resume_button = resume
 
 	var play := _make_button("▶   PLAY NOW", CYAN, Color("#138FAE"), Color("#071B30"))
+	play.name = "PlayButton"
 	play.anchor_left = 0.11
 	play.anchor_right = 0.89
 	play.anchor_top = 0.725
@@ -155,11 +158,22 @@ func _build() -> void:
 	root.add_child(daily)
 	_daily_button = daily
 
+	var weekly := _make_button("✧   WEEKLY CHALLENGE", Color("#A78BFA"), Color("#6D55C6"), Color("#160E35"))
+	weekly.name = "WeeklyChallengeButton"
+	weekly.anchor_left = 0.11
+	weekly.anchor_right = 0.89
+	weekly.anchor_top = 0.85
+	weekly.anchor_bottom = 0.90
+	weekly.pressed.connect(func(): weekly_challenge_requested.emit())
+	root.add_child(weekly)
+	_weekly_button = weekly
+
 	var settings := _make_button("⚙   SETTINGS", VIOLET, Color("#5840B4"), Color.WHITE)
+	settings.name = "SettingsButton"
 	settings.anchor_left = 0.11
 	settings.anchor_right = 0.89
-	settings.anchor_top = 0.855
-	settings.anchor_bottom = 0.91
+	settings.anchor_top = 0.91
+	settings.anchor_bottom = 0.96
 	settings.pressed.connect(func(): settings_requested.emit())
 	root.add_child(settings)
 	_settings_button = settings
@@ -389,29 +403,33 @@ func _refresh_player_stats() -> void:
 		row.text = "%s   •   %s" % [titles[key], value_text]
 
 func _layout_action_buttons() -> void:
-	if not is_instance_valid(_play_button) or not is_instance_valid(_best_panel):
+	if not is_instance_valid(_play_button) or not is_instance_valid(_weekly_button) or not is_instance_valid(_best_panel):
 		return
 	var has_resume := is_instance_valid(_resume_button) and _resume_button.visible
 	if has_resume:
 		_resume_button.anchor_top = 0.700
-		_resume_button.anchor_bottom = 0.750
-		_play_button.anchor_top = 0.755
-		_play_button.anchor_bottom = 0.810
-		_daily_button.anchor_top = 0.815
-		_daily_button.anchor_bottom = 0.870
-		_settings_button.anchor_top = 0.875
-		_settings_button.anchor_bottom = 0.930
+		_resume_button.anchor_bottom = 0.738
+		_play_button.anchor_top = 0.741
+		_play_button.anchor_bottom = 0.784
+		_daily_button.anchor_top = 0.787
+		_daily_button.anchor_bottom = 0.830
+		_weekly_button.anchor_top = 0.833
+		_weekly_button.anchor_bottom = 0.876
+		_settings_button.anchor_top = 0.879
+		_settings_button.anchor_bottom = 0.922
 		_best_panel.anchor_top = 0.935
 		_best_panel.anchor_bottom = 0.985
 	else:
-		_play_button.anchor_top = 0.725
-		_play_button.anchor_bottom = 0.785
-		_daily_button.anchor_top = 0.790
-		_daily_button.anchor_bottom = 0.845
-		_settings_button.anchor_top = 0.855
-		_settings_button.anchor_bottom = 0.910
-		_best_panel.anchor_top = 0.920
-		_best_panel.anchor_bottom = 0.975
+		_play_button.anchor_top = 0.690
+		_play_button.anchor_bottom = 0.745
+		_daily_button.anchor_top = 0.750
+		_daily_button.anchor_bottom = 0.805
+		_weekly_button.anchor_top = 0.810
+		_weekly_button.anchor_bottom = 0.865
+		_settings_button.anchor_top = 0.870
+		_settings_button.anchor_bottom = 0.925
+		_best_panel.anchor_top = 0.935
+		_best_panel.anchor_bottom = 0.985
 
 func set_resume_available(value: bool) -> void:
 	if is_instance_valid(_resume_button):
